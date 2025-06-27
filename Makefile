@@ -3,8 +3,8 @@ CPP = c++
 RM = rm -f
 FILES = main \
 		MySocket \
-		ConnectSocket \
 		ListeningSocket \
+		ClientSession \
 
 SRCS = $(addsuffix .cpp, $(FILES))
 OBJS = $(addsuffix .o, $(FILES))

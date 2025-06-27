@@ -1,7 +1,7 @@
 #ifndef CONNECTSOCKET_HPP
 #define CONNECTSOCKET_HPP
 
-#include "MySocket.hpp"
+#include "../MySocket.hpp"
 
 class ConnectSocket: public MySocket
 {

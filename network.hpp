@@ -3,6 +3,7 @@
 
 #include "MySocket.hpp"
 #include "ListeningSocket.hpp"
-#include "ConnectSocket.hpp"
+#include "ClientSession.hpp"
+
 
 #endif // NETWORK_HPP
