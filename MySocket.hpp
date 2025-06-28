@@ -6,7 +6,8 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
+#include <vector>
+#include <fstream>
 
 class MySocket
 {

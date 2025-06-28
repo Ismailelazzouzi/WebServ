@@ -5,6 +5,8 @@ FILES = main \
 		MySocket \
 		ListeningSocket \
 		ClientSession \
+		RequestParser \
+		ResponseBuilder \
 
 SRCS = $(addsuffix .cpp, $(FILES))
 OBJS = $(addsuffix .o, $(FILES))

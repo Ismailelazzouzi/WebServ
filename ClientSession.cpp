@@ -21,8 +21,13 @@ void    ClientSession::handle()
             close(clientFd);
             exit(EXIT_FAILURE);
         }
-        std::cout << "Client says: " << std::string(buffer, bytes) << std::endl;
-        bytes = send(clientFd, buffer, bytes, 0);
+
+        rp = RequestParser((std::string)buffer);
+        ResponseBuilder rb(rp);
+        std::string response;
+        response = rb.getToSend();
+        std::cout << "Client says:\n" << std::string(buffer, bytes) << std::endl;
+        bytes = send(clientFd, response.c_str(), response.length(), 0);
         if (bytes <= 0)
         {
             perror("FAILED TO SEND");
@@ -31,6 +36,12 @@ void    ClientSession::handle()
         }
     }
 }
+
+RequestParser ClientSession::getRp()
+{
+    return rp;
+}
+
 ClientSession::~ClientSession()
 {
     close(clientFd);
