@@ -33,7 +33,7 @@ void    ClientSession::run()
             int bytes = recv(fds[i].fd, buffer, sizeof(buffer), 0);
             if (bytes <= 0)
             {
-                std::cout << "Client " << i << " Disconnected!" << std::endl;
+                std::cout << "Client on fd " << fds[i].fd << " disconnected!" << std::endl;
                 close(fds[i].fd);
                 fds.erase(fds.begin() + i);
                 continue ;
