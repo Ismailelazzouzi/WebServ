@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <vector>
 #include <fstream>
+#include <poll.h> 
 
 class MySocket
 {

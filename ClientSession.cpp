@@ -1,39 +1,59 @@
 #include "ClientSession.hpp"
 
-ClientSession::ClientSession(int fd) : clientFd(fd)
+ClientSession::ClientSession(ListeningSocket ls) : ls(ls), listenFd(ls.getSock())
 {
+    pollfd serverPoll;
+    serverPoll.fd = listenFd;
+    serverPoll.events = POLLIN;
+    fds.push_back(serverPoll);
 }
 
-void    ClientSession::handle()
+void    ClientSession::run()
 {
-    char buffer[1024];
     while (true)
     {
-        int bytes = recv(clientFd, buffer, sizeof(buffer), 0);
-        if (bytes == 0)
+        if (poll(&fds[0], fds.size(), -1) < 0)
         {
-            std::cout << "Client Disconnected!" << std::endl;
-            break;
-        }
-        if (bytes <= 0)
-        {
-            perror("FAILED TO RECIEVE");
-            close(clientFd);
+            perror("POLL FAILED");
             exit(EXIT_FAILURE);
         }
-        std::string request(buffer, bytes);
-        rp = RequestParser(request);
-        ResponseBuilder rb(rp);
-        std::string response;
-        response = rb.getToSend();
-        bytes = send(clientFd, response.c_str(), response.length(), 0);
-        if (bytes <= 0)
+        if (fds[0].revents & POLLIN)
         {
-            perror("FAILED TO SEND");
-            close(clientFd);
-            exit(EXIT_FAILURE);
+            int listener = ls.acceptClient();
+            pollfd newPollfd;
+            newPollfd.fd = listener;
+            newPollfd.events = POLLIN;
+            fds.push_back(newPollfd);
         }
-        break ;
+        for (int i = static_cast<int>(fds.size()) - 1; i >= 1; i--)
+        {
+            if (!(fds[i].revents & POLLIN))
+                continue;
+            char buffer[1024];
+            int bytes = recv(fds[i].fd, buffer, sizeof(buffer), 0);
+            if (bytes <= 0)
+            {
+                std::cout << "Client " << i << " Disconnected!" << std::endl;
+                close(fds[i].fd);
+                fds.erase(fds.begin() + i);
+                continue ;
+            }
+            else
+            {
+                std::string request(buffer, bytes);
+                RequestParser rp(request);
+                ResponseBuilder rb(rp);
+                bytes = send(fds[i].fd, rb.getToSend().c_str(), rb.getToSend().length(), 0);
+                if (bytes <= 0)
+                {
+                    perror("FAILED TO SEND");
+                    close(fds[i].fd);
+                    fds.erase(fds.begin() + i);
+                    continue ;
+                }
+            }
+        }
+        
     }
 }
 
@@ -44,6 +64,6 @@ RequestParser ClientSession::getRp()
 
 ClientSession::~ClientSession()
 {
-    close(clientFd);
-    std::cout << "Closed client socket: " << clientFd << std::endl;
+    close(listenFd);
+    std::cout << "Closed client socket: " << listenFd << std::endl;
 }

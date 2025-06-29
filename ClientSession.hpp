@@ -4,16 +4,19 @@
 #include "MySocket.hpp"
 #include "RequestParser.hpp"
 #include "ResponseBuilder.hpp"
+#include "ListeningSocket.hpp"
 
 class ClientSession
 {
 private:
-    int clientFd;
+    int listenFd;
+    std::vector<pollfd> fds;
     RequestParser rp;
+    ListeningSocket ls;
 public:
-    ClientSession(int fd);
+    ClientSession(ListeningSocket ls);
     ~ClientSession();
-    void    handle();
+    void    run();
     RequestParser getRp();
 };
 
