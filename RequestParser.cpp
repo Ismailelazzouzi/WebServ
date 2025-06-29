@@ -52,3 +52,48 @@ const std::string &RequestParser::getVersion() const
 {
     return version;
 }
+
+const std::string &RequestParser::getContentType() const
+{
+    return contentType;
+}
+
+void    RequestParser::setType()
+{
+    int i = 0;
+    while (i < path.length())
+    {
+        if (path[i] == '.')
+            break;
+        i++;
+    }
+    if (i == path.length() || path.length() - i < 2)
+    {
+        contentType = "text/plain";
+        return ;
+    }
+    i++;
+    std::string type = path.substr(i, path.length() - i);
+    int j = i;
+    i = 0;
+    while (i < type.length())
+    {
+        if (type[i] >= 'A' && type[i] <= 'Z')
+            type[i] = std::tolower(type[i]);
+        i++;
+    }
+    if (type == "html")
+        contentType = "text/html";
+    else if (type == "js")
+        contentType = "application/javascript";
+    else if (type == "css")
+        contentType = "text/css";
+    else if (type == "json")
+        contentType = "application/json";
+    else if (type == "png")
+        contentType = "image/png";
+    else if (type == "jpg")
+        contentType = "image/jpeg";
+    else
+        contentType = "text/plain";
+}

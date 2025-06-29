@@ -21,12 +21,11 @@ void    ClientSession::handle()
             close(clientFd);
             exit(EXIT_FAILURE);
         }
-
-        rp = RequestParser((std::string)buffer);
+        std::string request(buffer, bytes);
+        rp = RequestParser(request);
         ResponseBuilder rb(rp);
         std::string response;
         response = rb.getToSend();
-        std::cout << "Client says:\n" << std::string(buffer, bytes) << std::endl;
         bytes = send(clientFd, response.c_str(), response.length(), 0);
         if (bytes <= 0)
         {
@@ -34,6 +33,7 @@ void    ClientSession::handle()
             close(clientFd);
             exit(EXIT_FAILURE);
         }
+        break ;
     }
 }
 

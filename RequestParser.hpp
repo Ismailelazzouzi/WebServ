@@ -10,12 +10,15 @@ private:
     std::string method;
     std::string path;
     std::string version;
+    std::string contentType;
 public:
     RequestParser();
     RequestParser(std::string buffer);
     const std::string &getMethod() const;
     const std::string &getPath() const;
     const std::string &getVersion() const;
+    const std::string &getContentType() const;
+    void  setType();
 };
 
 
