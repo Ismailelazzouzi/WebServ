@@ -3,6 +3,7 @@ CPP = c++
 RM = rm -f
 FILES = main \
 		MySocket \
+		ConfigParser \
 		ListeningSocket \
 		ClientSession \
 		RequestParser \

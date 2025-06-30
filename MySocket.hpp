@@ -9,6 +9,7 @@
 #include <vector>
 #include <fstream>
 #include <poll.h> 
+#include <cctype>
 
 class MySocket
 {

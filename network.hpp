@@ -2,6 +2,7 @@
 #define NETWORK_HPP
 
 #include "MySocket.hpp"
+#include "ConfigParser.hpp"
 #include "ListeningSocket.hpp"
 #include "ClientSession.hpp"
 #include "RequestParser.hpp"
