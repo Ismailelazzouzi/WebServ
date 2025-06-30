@@ -4,7 +4,7 @@ RequestParser::RequestParser()
 {
 }
 
-RequestParser::RequestParser(std::string buffer) : fullRequest(buffer)
+RequestParser::RequestParser(std::string buffer, std::string defaultPath) : fullRequest(buffer)
 {
     std::string firstLine;
     std::string splited[3];
@@ -32,7 +32,7 @@ RequestParser::RequestParser(std::string buffer) : fullRequest(buffer)
     splited[k] = firstLine.substr(j);
     method = splited[0];
     if (splited[1] == "/")
-        path = "/index.html";
+        path = defaultPath;
     else
         path = splited[1];
     version = splited[2];

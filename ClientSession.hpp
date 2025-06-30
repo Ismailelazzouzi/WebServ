@@ -5,16 +5,24 @@
 #include "RequestParser.hpp"
 #include "ResponseBuilder.hpp"
 #include "ListeningSocket.hpp"
+#include "ConfigParser.hpp"
+
+struct ClientInfo {
+    int fd;
+    ServerConfig config;
+};
 
 class ClientSession
 {
 private:
-    int listenFd;
+    std::vector <int> listenFds;
     std::vector<pollfd> fds;
     RequestParser rp;
-    ListeningSocket ls;
+    std::vector<ListeningSocket> lss;
+    ConfigParser cp;
+    
 public:
-    ClientSession(ListeningSocket ls);
+    ClientSession(ConfigParser cp);
     ~ClientSession();
     void    run();
     RequestParser getRp();

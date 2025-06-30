@@ -1,10 +1,10 @@
 #include "ResponseBuilder.hpp"
 
-ResponseBuilder::ResponseBuilder(RequestParser rp) : rp(rp)
+ResponseBuilder::ResponseBuilder(RequestParser rp, std::string root) : rp(rp)
 {
     std::string localPath;
     std::string path = rp.getPath();
-    localPath = "./serverfiles" + path;
+    localPath = root + path;
     std::ifstream file;
     file.open(localPath);
     if (!file.is_open())

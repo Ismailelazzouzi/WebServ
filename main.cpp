@@ -45,6 +45,8 @@ int main(int ac, char **av)
             std::cout << "  Root:  " << configs[i].root << "\n";
             std::cout << "  Index: " << configs[i].index << "\n";
         }
+        ClientSession cl = ClientSession(parser);
+        cl.run();
     }
 
 
@@ -56,7 +58,5 @@ int main(int ac, char **av)
     // std::cout << "Starting...!" << std::endl;
     // std::cout << "Creating Listening Socket" << std::endl;
     // ListeningSocket ls = ListeningSocket(AF_INET, SOCK_STREAM, 0, 8080, INADDR_ANY, 10);
-    // ClientSession cl = ClientSession(ls);
-    // cl.run();
     // std::cout << "SUCCESS!" << std::endl;
 }

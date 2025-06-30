@@ -13,7 +13,7 @@ private:
     std::string contentType;
 public:
     RequestParser();
-    RequestParser(std::string buffer);
+    RequestParser(std::string buffer, std::string defaultPath);
     const std::string &getMethod() const;
     const std::string &getPath() const;
     const std::string &getVersion() const;
