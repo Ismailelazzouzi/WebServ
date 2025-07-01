@@ -38,13 +38,6 @@ int main(int ac, char **av)
         ConfigParser parser;
         parser.parse(configFile);
         const std::vector<ServerConfig> &configs = parser.getServers();
-        for (size_t i = 0; i < configs.size(); ++i)
-        {
-            std::cout << "Server #" << i << ":\n";
-            std::cout << "  Port:  " << configs[i].port << "\n";
-            std::cout << "  Root:  " << configs[i].root << "\n";
-            std::cout << "  Index: " << configs[i].index << "\n";
-        }
         ClientSession cl = ClientSession(parser);
         cl.run();
     }

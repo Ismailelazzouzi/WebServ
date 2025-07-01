@@ -4,7 +4,7 @@ RequestParser::RequestParser()
 {
 }
 
-RequestParser::RequestParser(std::string buffer, std::string defaultPath) : fullRequest(buffer)
+RequestParser::RequestParser(std::string buffer, ServerConfig config) : fullRequest(buffer), index(config.index), autoindex(config.autoindex)
 {
     std::string firstLine;
     std::string splited[3];
@@ -32,7 +32,7 @@ RequestParser::RequestParser(std::string buffer, std::string defaultPath) : full
     splited[k] = firstLine.substr(j);
     method = splited[0];
     if (splited[1] == "/")
-        path = defaultPath;
+        path = config.index;
     else
         path = splited[1];
     version = splited[2];
@@ -56,6 +56,16 @@ const std::string &RequestParser::getVersion() const
 const std::string &RequestParser::getContentType() const
 {
     return contentType;
+}
+
+const std::string &RequestParser::getIndex() const
+{
+    return index;
+}
+
+const bool RequestParser::getAutoIndex() const
+{
+    return autoindex;
 }
 
 void    RequestParser::setType()

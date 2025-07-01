@@ -8,6 +8,7 @@ struct ServerConfig
     int port;
     std::string root;
     std::string index;
+    bool autoindex;
 };
 
 class ConfigParser

@@ -47,7 +47,6 @@ void    ClientSession::run()
             if (bytes <= 0)
             {
                 int clientFd = fds[i].fd;
-                std::cout << "Client on fd " << fds[i].fd << " disconnected!" << std::endl;
                 close(fds[i].fd);
                 fds.erase(fds.begin() + i);
                 for (size_t j = 0; j < clients.size(); ++j)
@@ -76,8 +75,7 @@ void    ClientSession::run()
                     continue;
                 buffer[bytes] = '\0';
                 std::string request(buffer, bytes);
-                std::cout << request << std::endl;
-                RequestParser rp(request, config->index);
+                RequestParser rp(request, *config);
                 ResponseBuilder rb(rp, config->root);
                 bytes = send(fds[i].fd, rb.getToSend().c_str(), rb.getToSend().length(), 0);
                 if (bytes <= 0)

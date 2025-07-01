@@ -55,8 +55,9 @@ void    ConfigParser::parse(const std::string &filepath)
             if (spacePos == std::string::npos)
                 continue;
             std::string directive = line.substr(0, spacePos);
-            if (directive == "listen" || directive == "root" || directive == "index")
+            if (directive == "listen" || directive == "root" || directive == "index" || directive == "autoindex")
             {
+                current.autoindex = false;
                 std::string value = trim(line.substr(line.find(' ') + 1));
                 if (!value.empty() && value.back() == ';')
                     value.pop_back();
@@ -66,6 +67,9 @@ void    ConfigParser::parse(const std::string &filepath)
                     current.root = value;
                 else if (directive == "index")
                     current.index = value;
+                else if (directive == "autoindex")
+                    if (value == "on")
+                        current.autoindex = true;
             }
             else
                 std::cerr << "Warning: unknown directive: " << directive << std::endl;
