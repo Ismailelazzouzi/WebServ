@@ -4,7 +4,9 @@ RequestParser::RequestParser()
 {
 }
 
-RequestParser::RequestParser(std::string buffer, ServerConfig config) : fullRequest(buffer), index(config.index), autoindex(config.autoindex)
+RequestParser::RequestParser(std::string buffer, ServerConfig config) : fullRequest(buffer),
+    index(config.index), autoindex(config.autoindex), errorPages(config.errorPages),
+        root(config.root)
 {
     std::string firstLine;
     std::string splited[3];
@@ -66,6 +68,16 @@ const std::string &RequestParser::getIndex() const
 const bool RequestParser::getAutoIndex() const
 {
     return autoindex;
+}
+
+std::map<int, std::string> RequestParser::getErrorPages()
+{
+    return errorPages;
+}
+
+const std::string &RequestParser::getRoot() const
+{
+    return root;
 }
 
 void    RequestParser::setType()

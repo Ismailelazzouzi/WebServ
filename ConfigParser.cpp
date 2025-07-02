@@ -55,9 +55,9 @@ void    ConfigParser::parse(const std::string &filepath)
             if (spacePos == std::string::npos)
                 continue;
             std::string directive = line.substr(0, spacePos);
-            if (directive == "listen" || directive == "root" || directive == "index" || directive == "autoindex")
+            if (directive == "listen" || directive == "root"
+                    || directive == "index" || directive == "autoindex" || directive == "error_page")
             {
-                current.autoindex = false;
                 std::string value = trim(line.substr(line.find(' ') + 1));
                 if (!value.empty() && value.back() == ';')
                     value.pop_back();
@@ -68,8 +68,24 @@ void    ConfigParser::parse(const std::string &filepath)
                 else if (directive == "index")
                     current.index = value;
                 else if (directive == "autoindex")
+                {
                     if (value == "on")
-                        current.autoindex = true;
+                        current.autoindex = 1;
+                    else
+                        current.autoindex = 0;
+                }
+                else if (directive == "error_page")
+                {
+                    size_t spacePos2 = line.find(' ', spacePos + 1);
+                    if (spacePos2 != std::string::npos)
+                    {
+                        int code = std::atoi(line.substr(spacePos + 1, spacePos2 - spacePos -1).c_str());
+                        std::string path = trim(line.substr(spacePos2 + 1));
+                        if (!path.empty() && path.back() == ';')
+                            path.pop_back();
+                        current.errorPages[code] = path;
+                    }
+                }
             }
             else
                 std::cerr << "Warning: unknown directive: " << directive << std::endl;

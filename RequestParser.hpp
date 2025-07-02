@@ -14,6 +14,8 @@ private:
     std::string contentType;
     std::string index;
     bool autoindex;
+    std::map<int, std::string> errorPages;
+    std::string root;
 public:
     RequestParser();
     RequestParser(std::string buffer, ServerConfig config);
@@ -23,6 +25,8 @@ public:
     const std::string &getContentType() const;
     const std::string &getIndex() const;
     const bool getAutoIndex() const;
+    std::map<int, std::string> getErrorPages();
+    const std::string &getRoot() const;
     void  setType();
 };
 
