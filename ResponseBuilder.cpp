@@ -8,21 +8,19 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, std::string root) : rp(rp)
         localPath = root + path;
     else
         localPath = root + "/" + path;
-    std::ifstream file;
-    file.open(localPath);
     DIR *dir = opendir(localPath.c_str());
     if (dir)
     {
         std::string indexpath;
         if (localPath[localPath.length() - 1] == '/')
-            indexpath = localPath + rp.getIndex();
+        indexpath = localPath + rp.getIndex();
         else
-            indexpath = localPath + "/" + rp.getIndex();
+        indexpath = localPath + "/" + rp.getIndex();
         std::ifstream indexFile(indexpath);
         if (indexFile.is_open())
         {
             std::string fileContent((std::istreambuf_iterator<char>(indexFile)),
-                (std::istreambuf_iterator<char>()));
+            (std::istreambuf_iterator<char>()));
             fileLen = fileContent.length();
             std::string fileLength = std::to_string(fileLen);
             rp.setType();
@@ -39,7 +37,7 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, std::string root) : rp(rp)
             {
                 std::string name = entry->d_name;
                 if (name == "." || name == "..")
-                    continue ;
+                continue ;
                 html += "<li><a href=\"" ;
                 html += name;
                 html += "\">";
@@ -49,51 +47,48 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, std::string root) : rp(rp)
             html += "</ul></body></html>";
             fileLen = html.length();
             toSend = rp.getVersion() + " 200 OK\r\nContent-Type: text/html\r\nContent-Length: "
-                + std::to_string(fileLen) + "\r\n\r\n" + html;
+            + std::to_string(fileLen) + "\r\n\r\n" + html;
             closedir(dir);
             return ;
         }
         else if (!rp.getAutoIndex())
         {
             std::map<int, std::string> errors = rp.getErrorPages();
+            std::string errorPath;
+            errorPath = "./defaultErrors/403.html";
             if (errors.find(403) != errors.end())
-            {
-                std::string errorPath = rp.getRoot() + rp.getErrorPages().at(403);
-                std::ifstream errorFile(errorPath);
-                if (errorFile.is_open())
-                {
-                    std::string errorContent((std::istreambuf_iterator<char>(errorFile)),
-                    (std::istreambuf_iterator<char>()));
-                    fileLen = errorContent.length();
-                    toSend = rp.getVersion() + " 403 Forbidden\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
-                    closedir(dir);
-                    return ;
-                }
-            }
-            toSend = rp.getVersion() + " 403 Forbidden\r\nContent-Type: text/html\r\nContent-Length: 35\r\n\r\n<html><h1>403 FORBIDDEN</h1></html>";
-            closedir(dir);
-            return ;
-        }
-        closedir(dir);
-    }
-    if (!file.is_open())
-    {
-        std::map<int, std::string> errors = rp.getErrorPages();
-        if (errors.find(404) != errors.end())
-        {
-            std::string errorPath = rp.getRoot() + rp.getErrorPages().at(404);
+            std::cout << "here" << std::endl;
+            errorPath = rp.getRoot() + rp.getErrorPages().at(403);
             std::ifstream errorFile(errorPath);
             if (errorFile.is_open())
             {
                 std::string errorContent((std::istreambuf_iterator<char>(errorFile)),
-                    (std::istreambuf_iterator<char>()));
+                (std::istreambuf_iterator<char>()));
                 fileLen = errorContent.length();
-                toSend = rp.getVersion() + " 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                toSend = rp.getVersion() + " 403 Forbidden\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                closedir(dir);
                 return ;
             }
         }
-        toSend = rp.getVersion() + " 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: 35\r\n\r\n<html><h1>404 NOT FOUND</h1></html>";
-        return ;
+    }
+    std::ifstream file;
+    file.open(localPath);
+    if (!file.is_open())
+    {
+        std::map<int, std::string> errors = rp.getErrorPages();
+        std::string errorPath;
+        errorPath = "./defaultErrors/404.html";
+        if (errors.find(404) != errors.end())
+            errorPath = rp.getRoot() + rp.getErrorPages().at(404);
+        std::ifstream errorFile(errorPath);
+        if (errorFile.is_open())
+        {
+            std::string errorContent((std::istreambuf_iterator<char>(errorFile)),
+                (std::istreambuf_iterator<char>()));
+            fileLen = errorContent.length();
+            toSend = rp.getVersion() + " 404 Forbidden\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+            return ;
+        }
     }
     std::string fileContent((std::istreambuf_iterator<char>(file)),
         (std::istreambuf_iterator<char>()));
