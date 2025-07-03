@@ -13,9 +13,9 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, std::string root) : rp(rp)
     {
         std::string indexpath;
         if (localPath[localPath.length() - 1] == '/')
-        indexpath = localPath + rp.getIndex();
+            indexpath = localPath + rp.getIndex();
         else
-        indexpath = localPath + "/" + rp.getIndex();
+            indexpath = localPath + "/" + rp.getIndex();
         std::ifstream indexFile(indexpath);
         if (indexFile.is_open())
         {
@@ -57,8 +57,7 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, std::string root) : rp(rp)
             std::string errorPath;
             errorPath = "./defaultErrors/403.html";
             if (errors.find(403) != errors.end())
-            std::cout << "here" << std::endl;
-            errorPath = rp.getRoot() + rp.getErrorPages().at(403);
+                errorPath = rp.getRoot() + rp.getErrorPages().at(403);
             std::ifstream errorFile(errorPath);
             if (errorFile.is_open())
             {
