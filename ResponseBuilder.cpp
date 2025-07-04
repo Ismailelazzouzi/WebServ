@@ -80,14 +80,22 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, std::string root) : rp(rp)
         if (errors.find(404) != errors.end())
             errorPath = rp.getRoot() + rp.getErrorPages().at(404);
         std::ifstream errorFile(errorPath);
-        if (errorFile.is_open())
+        std::string errorContent;
+        if (!errorFile.is_open())
         {
-            std::string errorContent((std::istreambuf_iterator<char>(errorFile)),
+            errorPath = "./defaultErrors/404.html";
+            std::ifstream defaultErrorFile(errorPath);
+            errorContent = std::string((std::istreambuf_iterator<char>(defaultErrorFile)),
                 (std::istreambuf_iterator<char>()));
-            fileLen = errorContent.length();
-            toSend = rp.getVersion() + " 404 Forbidden\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
-            return ;
         }
+        else
+        {
+            errorContent = std::string((std::istreambuf_iterator<char>(errorFile)),
+                (std::istreambuf_iterator<char>()));
+        }
+        fileLen = errorContent.length();
+        toSend = rp.getVersion() + " 404 Forbidden\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+        return ;
     }
     std::string fileContent((std::istreambuf_iterator<char>(file)),
         (std::istreambuf_iterator<char>()));
