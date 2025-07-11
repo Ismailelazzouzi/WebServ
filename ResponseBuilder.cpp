@@ -1,9 +1,13 @@
 #include "ResponseBuilder.hpp"
 
+ResponseBuilder::ResponseBuilder()
+{}
+
 ResponseBuilder::ResponseBuilder(RequestParser rp, std::string root) : rp(rp)
 {
     std::string localPath;
     std::string path = rp.getPath();
+    std::cout << path << std::endl;
     if (path[0] == '/')
         localPath = root + path;
     else

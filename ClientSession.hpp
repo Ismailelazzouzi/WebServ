@@ -10,6 +10,10 @@
 struct ClientInfo {
     int fd;
     ServerConfig config;
+    std::string requestBuffer;
+    std::string responseBuffer;
+    RequestParser rp;
+    ResponseBuilder rb;
 };
 
 class ClientSession
@@ -26,6 +30,7 @@ public:
     ~ClientSession();
     void    run();
     RequestParser getRp();
+    int currentClientPos(const std::vector<ClientInfo> &clients, int clientFd);
 };
 
 

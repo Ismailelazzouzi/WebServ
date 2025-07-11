@@ -16,6 +16,33 @@ ClientSession::ClientSession(ConfigParser cp) : cp(cp)
     }
 }
 
+bool    fullRequest(std::string &request)
+{
+    size_t endOfHeaders = request.find("\r\n\r\n");
+    if (endOfHeaders == std::string::npos)
+        return false;
+    std::string headers = request.substr(0, endOfHeaders);
+    std::string body = request.substr(endOfHeaders + 4);
+    if (headers.substr(0, headers.find("\n")).find("GET") != std::string::npos)
+        return true;
+    else if (headers.find("Transfer-Encoding: chunked") != std::string::npos 
+        && body.find("0\r\n\r\n") == std::string::npos)
+        return false;
+    else if (headers.find("Transfer-Encoding: chunked") != std::string::npos 
+        && body.find("0\r\n\r\n") != std::string::npos)
+        return true;
+    else if (headers.find("Content-Length") != std::string::npos)
+    {
+        std::string contentLen = headers.substr(headers.find("Content-Length:") + 15);
+        contentLen = contentLen.substr(0, contentLen.find("\r\n"));
+        size_t cntLen = std::stol(contentLen);
+        if (body.size() < cntLen)
+            return false;
+        return true;
+    }
+    return true;
+}
+
 void    ClientSession::run()
 {
     std::vector<ClientInfo> clients;
@@ -40,44 +67,47 @@ void    ClientSession::run()
         }
         for (int i = static_cast<int>(fds.size()) - 1; i >= (int)listenFds.size(); i--)
         {
-            if (!(fds[i].revents & POLLIN))
-                continue;
             char buffer[1024];
-            int bytes = recv(fds[i].fd, buffer, sizeof(buffer), 0);
-            if (bytes <= 0)
+            int clientFd = fds[i].fd;
+            int clientPos = currentClientPos(clients, clientFd);
+            int bytes;
+            if (fds[i].revents & POLLIN)
             {
-                int clientFd = fds[i].fd;
-                close(fds[i].fd);
-                fds.erase(fds.begin() + i);
-                for (size_t j = 0; j < clients.size(); ++j)
+                bytes = recv(fds[i].fd, buffer, sizeof(buffer), 0);
+                if (bytes <= 0)
                 {
-                    if (clients[j].fd == clientFd)
+                    int clientFd = fds[i].fd;
+                    close(fds[i].fd);
+                    fds.erase(fds.begin() + i);
+                    for (size_t j = 0; j < clients.size(); ++j)
                     {
-                        clients.erase(clients.begin() + j);
-                        break;
+                        if (clients[j].fd == clientFd)
+                        {
+                            clients.erase(clients.begin() + j);
+                            break;
+                        }
                     }
+                    continue ;
                 }
-                continue ;
+                else
+                {
+                    buffer[bytes] = '\0';
+                    std::string request(buffer, bytes);
+                    clients[clientPos].requestBuffer += request; // request buffer to hold chunked requests
+                    if (fullRequest(clients[clientPos].requestBuffer))
+                    {
+                        clients[clientPos].rp = RequestParser(clients[clientPos].requestBuffer, clients[clientPos].config);
+                        clients[clientPos].requestBuffer.clear();
+                        fds[i].events = POLLOUT;
+                    }
+                    else
+                        continue ;
+                }
             }
-            else
+            if (fds[i].revents & POLLOUT)
             {
-                int clientFd = fds[i].fd;
-                ServerConfig* config = nullptr;
-                for (size_t j = 0; j < clients.size(); ++j)
-                {
-                    if (clients[j].fd == clientFd)
-                    {
-                        config = &clients[j].config;
-                        break;
-                    }
-                }
-                if (!config)
-                    continue;
-                buffer[bytes] = '\0';
-                std::string request(buffer, bytes);
-                RequestParser rp(request, *config);
-                ResponseBuilder rb(rp, config->root);
-                bytes = send(fds[i].fd, rb.getToSend().c_str(), rb.getToSend().length(), 0);
+                clients[clientPos].rb = ResponseBuilder(clients[clientPos].rp, clients[clientPos].config.root);
+                bytes = send(fds[i].fd, clients[clientPos].rb.getToSend().c_str(), clients[clientPos].rb.getToSend().length(), 0);
                 if (bytes <= 0)
                 {
                     perror("FAILED TO SEND");
@@ -85,10 +115,21 @@ void    ClientSession::run()
                     fds.erase(fds.begin() + i);
                     continue ;
                 }
+                fds[i].events = POLLIN;
             }
         }
         
     }
+}
+
+int ClientSession::currentClientPos(const std::vector<ClientInfo> &clients, int clientFd)
+{
+    for (size_t i = 0; i < clients.size(); i++)
+    {
+        if (clients[i].fd == clientFd)
+            return i;
+    }
+    return (-1);    
 }
 
 RequestParser ClientSession::getRp()

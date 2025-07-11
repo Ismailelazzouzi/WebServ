@@ -10,6 +10,7 @@ private:
     std::string toSend;
     int fileLen;
 public:
+    ResponseBuilder();
     ResponseBuilder(RequestParser rp, std::string root);
     const std::string &getToSend() const;
     int getFileLen() const;
