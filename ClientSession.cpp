@@ -93,11 +93,13 @@ void    ClientSession::run()
                 {
                     buffer[bytes] = '\0';
                     std::string request(buffer, bytes);
-                    clients[clientPos].requestBuffer += request; // request buffer to hold chunked requests
+                    clients[clientPos].requestBuffer += request;
                     if (fullRequest(clients[clientPos].requestBuffer))
                     {
                         clients[clientPos].rp = RequestParser(clients[clientPos].requestBuffer, clients[clientPos].config);
                         clients[clientPos].requestBuffer.clear();
+                        clients[clientPos].rb = ResponseBuilder(clients[clientPos].rp, clients[clientPos].config.root);
+                        clients[clientPos].responseBuffer = clients[clientPos].rb.getToSend();
                         fds[i].events = POLLOUT;
                     }
                     else
@@ -106,19 +108,20 @@ void    ClientSession::run()
             }
             if (fds[i].revents & POLLOUT)
             {
-                clients[clientPos].rb = ResponseBuilder(clients[clientPos].rp, clients[clientPos].config.root);
-                bytes = send(fds[i].fd, clients[clientPos].rb.getToSend().c_str(), clients[clientPos].rb.getToSend().length(), 0);
-                if (bytes <= 0)
+                clients[clientPos].byteSent = send(fds[i].fd, clients[clientPos].responseBuffer.c_str(), clients[clientPos].responseBuffer.length(), 0);
+                if (clients[clientPos].byteSent <= 0)
                 {
                     perror("FAILED TO SEND");
                     close(fds[i].fd);
                     fds.erase(fds.begin() + i);
                     continue ;
                 }
-                fds[i].events = POLLIN;
+                if (clients[clientPos].byteSent == clients[clientPos].responseBuffer.length())
+                    fds[i].events = POLLIN;
+                else if (clients[clientPos].byteSent < clients[clientPos].responseBuffer.length())
+                    clients[clientPos].responseBuffer = clients[clientPos].responseBuffer.substr(clients[clientPos].byteSent);
             }
         }
-        
     }
 }
 

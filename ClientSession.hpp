@@ -14,6 +14,7 @@ struct ClientInfo {
     std::string responseBuffer;
     RequestParser rp;
     ResponseBuilder rb;
+    size_t byteSent;
 };
 
 class ClientSession

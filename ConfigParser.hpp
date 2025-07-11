@@ -10,6 +10,7 @@ struct ServerConfig
     std::string index;
     std::map<int, std::string> errorPages;
     bool autoindex;
+    size_t  maxClientBody = 1048576;
 };
 
 class ConfigParser
