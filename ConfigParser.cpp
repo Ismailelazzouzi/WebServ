@@ -8,7 +8,8 @@ ConfigParser::~ConfigParser()
 {
 }
 
-std::string trim(const std::string& str) {
+std::string trim(const std::string& str)
+{
     size_t start = 0;
     while (start < str.length() && std::isspace(str[start])) {
         ++start;
@@ -20,6 +21,31 @@ std::string trim(const std::string& str) {
     }
 
     return str.substr(start, end - start);
+}
+
+size_t extractSize(std::string &value)
+{
+    size_t size = 1048576;
+    std::string ext;
+    std::string num;
+    for (size_t i = 0; i < value.length(); i++)
+    {
+        if (!(value[i] >= '0' && value[i] <= '9'))
+        {
+            ext = value.substr(i);
+            num = value.substr(0, i);
+            break;
+        }
+    }
+    if (ext == "k" || ext == "K")
+        size = std::stol(num) * 1024;
+    else if (ext == "m" || ext == "M")
+        size = std::stol(num) * 1048576;
+    else if (ext == "g" || ext == "G")
+        size = std::stol(num) * 1048576 * 1024;
+    else
+        size = std::stol(num);
+    return size;
 }
 
 void    ConfigParser::parse(const std::string &filepath)
@@ -47,6 +73,10 @@ void    ConfigParser::parse(const std::string &filepath)
         else if (line == "}")
         {
             insideBlock = false;
+            if (current.uploadPath.empty())
+            {
+                current.uploadPath = current.root + "/uploads";
+            }
             servers.push_back(current);
         }
         else if (insideBlock == true)
@@ -56,7 +86,9 @@ void    ConfigParser::parse(const std::string &filepath)
                 continue;
             std::string directive = line.substr(0, spacePos);
             if (directive == "listen" || directive == "root"
-                    || directive == "index" || directive == "autoindex" || directive == "error_page")
+                    || directive == "index" || directive == "autoindex"
+                    || directive == "error_page" || directive == "upload_path"
+                    || directive == "client_max_body_size")
             {
                 std::string value = trim(line.substr(line.find(' ') + 1));
                 if (!value.empty() && value.back() == ';')
@@ -67,6 +99,10 @@ void    ConfigParser::parse(const std::string &filepath)
                     current.root = value;
                 else if (directive == "index")
                     current.index = value;
+                else if (directive == "client_max_body_size")
+                    current.maxClientBody = extractSize(value);
+                else if (directive == "upload_path")
+                    current.uploadPath = current.root + value;
                 else if (directive == "autoindex")
                 {
                     if (value == "on")

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <dirent.h>
 #include <unistd.h>
 #include <vector>
@@ -12,6 +13,7 @@
 #include <fstream>
 #include <poll.h> 
 #include <cctype>
+#include <errno.h>
 
 class MySocket
 {

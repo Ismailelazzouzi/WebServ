@@ -11,9 +11,9 @@ private:
     int fileLen;
 public:
     ResponseBuilder();
-    ResponseBuilder(RequestParser rp, std::string root);
+    ResponseBuilder(RequestParser rp, ServerConfig &config);
     const std::string &getToSend() const;
-    int getFileLen() const;
+    std::string getFullPath(RequestParser rp);
 };
 
 

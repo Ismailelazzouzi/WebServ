@@ -1,4 +1,4 @@
-NAME = sockets
+NAME = webserv
 CPP = c++
 RM = rm -f
 FILES = main \

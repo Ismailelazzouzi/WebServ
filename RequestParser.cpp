@@ -4,9 +4,7 @@ RequestParser::RequestParser()
 {
 }
 
-RequestParser::RequestParser(std::string buffer, ServerConfig config) : fullRequest(buffer),
-    index(config.index), autoindex(config.autoindex), errorPages(config.errorPages),
-        root(config.root)
+RequestParser::RequestParser(std::string &buffer, ServerConfig &config) : config(config), fullRequest(buffer)
 {
     std::string firstLine;
     std::string splited[3];
@@ -38,6 +36,14 @@ RequestParser::RequestParser(std::string buffer, ServerConfig config) : fullRequ
     else
         path = splited[1];
     version = splited[2];
+    size_t pos = fullRequest.find("\r\n\r\n");
+    requestHeaders = fullRequest.substr(0, pos);
+    requestBody = fullRequest.substr(pos + 4);
+}
+
+const ServerConfig &RequestParser::getConfig() const
+{
+    return config;
 }
 
 const std::string &RequestParser::getMethod() const
@@ -62,22 +68,42 @@ const std::string &RequestParser::getContentType() const
 
 const std::string &RequestParser::getIndex() const
 {
-    return index;
+    return config.index;
+}
+
+const std::string &RequestParser::getBody() const
+{
+    return requestBody;
+}
+
+const std::string &RequestParser::getHeaders() const
+{
+    return requestHeaders;
 }
 
 const bool RequestParser::getAutoIndex() const
 {
-    return autoindex;
+    return config.autoindex;
 }
 
 std::map<int, std::string> RequestParser::getErrorPages()
 {
-    return errorPages;
+    return config.errorPages;
 }
 
 const std::string &RequestParser::getRoot() const
 {
-    return root;
+    return config.root;
+}
+
+const std::string &RequestParser::getUploadPath() const
+{
+    return config.uploadPath;
+}
+
+int RequestParser::getMaxClientBody() const
+{
+    return config.maxClientBody;
 }
 
 void    RequestParser::setType()

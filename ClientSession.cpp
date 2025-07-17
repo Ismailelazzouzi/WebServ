@@ -98,7 +98,7 @@ void    ClientSession::run()
                     {
                         clients[clientPos].rp = RequestParser(clients[clientPos].requestBuffer, clients[clientPos].config);
                         clients[clientPos].requestBuffer.clear();
-                        clients[clientPos].rb = ResponseBuilder(clients[clientPos].rp, clients[clientPos].config.root);
+                        clients[clientPos].rb = ResponseBuilder(clients[clientPos].rp, clients[clientPos].config);
                         clients[clientPos].responseBuffer = clients[clientPos].rb.getToSend();
                         fds[i].events = POLLOUT;
                     }
@@ -108,7 +108,8 @@ void    ClientSession::run()
             }
             if (fds[i].revents & POLLOUT)
             {
-                clients[clientPos].byteSent = send(fds[i].fd, clients[clientPos].responseBuffer.c_str(), clients[clientPos].responseBuffer.length(), 0);
+                clients[clientPos].byteSent = send(fds[i].fd, 
+                    clients[clientPos].responseBuffer.c_str(), clients[clientPos].responseBuffer.length(), 0);
                 if (clients[clientPos].byteSent <= 0)
                 {
                     perror("FAILED TO SEND");
