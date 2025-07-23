@@ -142,6 +142,13 @@ void    RequestParser::setType()
         contentType = "image/png";
     else if (type == "jpg")
         contentType = "image/jpeg";
+    else if (type == "php" || type == "cgi" || type == "py")
+        contentType = "cgi";
     else
         contentType = "text/plain";
+}
+
+void    RequestParser::setContentType(std::string type)
+{
+    contentType = type;
 }

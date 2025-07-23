@@ -32,6 +32,7 @@ public:
     const std::string &getRoot() const;
     int getMaxClientBody() const;
     void  setType();
+    void setContentType(std::string type);
 };
 
 

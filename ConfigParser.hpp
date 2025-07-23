@@ -8,6 +8,8 @@ struct ServerConfig
     int port;
     std::string root;
     std::string index;
+    std::string clientIp;
+    std::string clientPort;
     std::map<int, std::string> errorPages;
     bool autoindex;
     size_t  maxClientBody;

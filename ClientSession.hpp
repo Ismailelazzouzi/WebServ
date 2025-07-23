@@ -12,6 +12,8 @@ struct ClientInfo {
     ServerConfig config;
     std::string requestBuffer;
     std::string responseBuffer;
+    std::string remotePort;
+    std::string remoteIp;
     RequestParser rp;
     ResponseBuilder rb;
     size_t byteSent;

@@ -3,16 +3,32 @@
 ResponseBuilder::ResponseBuilder()
 {}
 
-ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config) : rp(rp)
+ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientInfo &client) : rp(rp)
 {
     if (rp.getMethod() == "GET" || rp.getMethod() == "DELETE" || rp.getMethod() == "POST")
     {
         std::string localPath;
         std::string path = rp.getPath();
+        int signal;
         if (path[0] == '/')
             localPath = rp.getRoot() + path;
         else
             localPath = rp.getRoot() + "/" + path;
+        rp.setType();
+        if (rp.getContentType() == "cgi")
+            signal = runCgi(rp, config, client);
+        // if (signal == 0)
+        //     return;
+        // else
+        // {
+        //     if (signal == 404 || signal == 403 || signal == 500)
+        //     {
+        //         //sendCustomError(signal);
+        //         return;
+        //     }
+        //     else
+        //         rp.setContentType("text/plain");
+        // }
         if (rp.getMethod() == "DELETE")
         {
             if (std::remove(localPath.c_str()) == 0)
@@ -309,6 +325,55 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config) : rp(rp
     }
 }
 
+void    prepareEnv(RequestParser rp, ServerConfig &config, ClientInfo &client)
+{
+    std::vector<std::string> keyValue;
+    std::string combined;
+    combined = "REQUEST_METHOD=" + rp.getMethod();
+    keyValue.push_back(combined);
+    combined = "SCRIPT_NAME=" + rp.getPath();
+    keyValue.push_back(combined);
+    combined = "PATH_INFO=";
+    keyValue.push_back(combined);    
+    size_t pos = rp.getPath().find("?");
+    if (pos == std::string::npos)
+        combined = "QUERY_STRING=";
+    else
+        combined = "QUERY_STRING=" + rp.getPath().substr(pos + 1);
+    keyValue.push_back(combined);
+    combined = "CONTENT_LENGTH=" + std::to_string(rp.getBody().length());
+    keyValue.push_back(combined);
+    combined = "SERVER_PORT=" + std::to_string(rp.getConfig().port);
+    keyValue.push_back(combined);
+    combined = "SERVER_PROTOCOL=" + rp.getVersion();
+    keyValue.push_back(combined);
+    combined = "REMOTE_ADDR=" + client.remoteIp;
+    keyValue.push_back(combined);
+    combined = "REMOTE_PORT=" + client.remotePort;
+    keyValue.push_back(combined);
+}
+
+int    ResponseBuilder::runCgi(RequestParser rp, ServerConfig &config, ClientInfo &client)
+{
+    std::string localPath;
+    std::string path = rp.getPath();
+    if (path[0] == '/')
+        localPath = rp.getRoot() + path;
+    else
+        localPath = rp.getRoot() + "/" + path;
+    struct stat sfile;
+    if (stat(localPath.c_str(), &sfile) != 0)
+        return (404);
+    if (S_ISREG(sfile.st_mode) == false || (sfile.st_mode & S_IXUSR) == 0)
+        return (403);
+    int readfds[2];
+    int writefds[2];
+    if (pipe(readfds) == -1 || pipe(writefds) == -1)
+        return (500);
+    prepareEnv(rp, config, client);
+    return 0;
+}
+
 std::string ResponseBuilder::getFullPath(RequestParser rp)
 {
     size_t pos = rp.getHeaders().find("Content-Disposition");
@@ -335,4 +400,9 @@ std::string ResponseBuilder::getFullPath(RequestParser rp)
 const std::string &ResponseBuilder::getToSend() const
 {
     return toSend;
+}
+
+const cgiData *ResponseBuilder::getCgi() const
+{
+    return cgi;
 }

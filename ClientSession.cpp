@@ -1,4 +1,5 @@
 #include "ClientSession.hpp"
+#include <arpa/inet.h>
 
 ClientSession::ClientSession(ConfigParser cp) : cp(cp)
 {
@@ -55,6 +56,28 @@ void    ClientSession::run()
             if (fds[i].revents & POLLIN)
             {
                 int listener = lss[i].acceptClient();
+                struct sockaddr_storage client_addr_storage;
+                socklen_t client_addr_len = sizeof(client_addr_storage);
+                std::string clientIp;
+                std::string clientPort;
+                if (getpeername(listener, (sockaddr *)&client_addr_storage, &client_addr_len) == 0)
+                {
+                    char buffer[INET6_ADDRSTRLEN];
+                    if (client_addr_storage.ss_family == AF_INET)
+                    {
+                        struct sockaddr_in *s = (struct sockaddr_in *)&client_addr_storage;
+                        inet_ntop(AF_INET, &s->sin_addr, buffer, sizeof(buffer));
+                        clientIp = buffer;
+                        clientPort = std::to_string(ntohs(s->sin_port));
+                    }
+                    else if (client_addr_storage.ss_family == AF_INET6)
+                    {
+                        struct sockaddr_in6 *s = (struct sockaddr_in6 *)&client_addr_storage;
+                        inet_ntop(AF_INET6, &s->sin6_addr, buffer, sizeof(buffer));
+                        clientIp = buffer;
+                        clientPort = std::to_string(ntohs(s->sin6_port));
+                    }
+                }
                 pollfd newPollfd;
                 ClientInfo client;
                 newPollfd.fd = listener;
@@ -62,6 +85,8 @@ void    ClientSession::run()
                 fds.push_back(newPollfd);
                 client.fd = listener;
                 client.config = cp.getServers()[i];
+                client.remoteIp = clientIp;
+                client.remotePort = clientPort;
                 clients.push_back(client);
             }        
         }
@@ -98,7 +123,7 @@ void    ClientSession::run()
                     {
                         clients[clientPos].rp = RequestParser(clients[clientPos].requestBuffer, clients[clientPos].config);
                         clients[clientPos].requestBuffer.clear();
-                        clients[clientPos].rb = ResponseBuilder(clients[clientPos].rp, clients[clientPos].config);
+                        clients[clientPos].rb = ResponseBuilder(clients[clientPos].rp, clients[clientPos].config, clients[clientPos]);
                         clients[clientPos].responseBuffer = clients[clientPos].rb.getToSend();
                         fds[i].events = POLLOUT;
                     }
