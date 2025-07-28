@@ -1,20 +1,20 @@
 NAME = webserv
 CPP = c++
 RM = rm -f
-FILES = main \
-		MySocket \
-		ConfigParser \
+FILES = MySocket \
 		ListeningSocket \
+		ConfigParser \
 		ClientSession \
 		RequestParser \
 		ResponseBuilder \
+		main \
 
 SRCS = $(addsuffix .cpp, $(FILES))
 OBJS = $(addsuffix .o, $(FILES))
 
 all: $(NAME)
 
-%.o: %.cpp network.hpp
+%.o: %.cpp
 	$(CPP) -c $< -o $@
 
 $(NAME): $(OBJS)

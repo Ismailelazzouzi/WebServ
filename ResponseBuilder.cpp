@@ -1,4 +1,5 @@
 #include "ResponseBuilder.hpp"
+#include "ClientSession.hpp"
 
 ResponseBuilder::ResponseBuilder()
 {}
@@ -212,6 +213,7 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
                         toSend += fullpath;
                         toSend += "\r\nContent-Length: 0\r\n\r\n";
                         closedir(dir);
+                        return ;
                     }
                 }
             }
@@ -333,7 +335,7 @@ void    prepareEnv(RequestParser rp, ServerConfig &config, ClientInfo &client)
     keyValue.push_back(combined);
     combined = "SCRIPT_NAME=" + rp.getPath();
     keyValue.push_back(combined);
-    combined = "PATH_INFO=";
+    combined = "PATH_INFO=" + rp.getExtraInfo();
     keyValue.push_back(combined);    
     size_t pos = rp.getPath().find("?");
     if (pos == std::string::npos)
@@ -351,6 +353,64 @@ void    prepareEnv(RequestParser rp, ServerConfig &config, ClientInfo &client)
     keyValue.push_back(combined);
     combined = "REMOTE_PORT=" + client.remotePort;
     keyValue.push_back(combined);
+    combined = "DOCUMENT_ROOT=" + config.root;
+    keyValue.push_back(combined);
+    combined = "PATH_TRANSLATED=" + config.root + rp.getExtraInfo();
+    keyValue.push_back(combined);
+    combined = "REQUEST_URI=" + rp.getFullPath();
+    keyValue.push_back(combined);
+    combined = "GATEWAY_INTERFACE=CGI/1.1";
+    keyValue.push_back(combined);
+    combined = "SERVER_SOFTWARE=serverMli7";
+    keyValue.push_back(combined);
+    combined = "SERVER_NAME=" + rp.getServerName();
+    keyValue.push_back(combined);
+    combined = "CONTENT_TYPE=" + rp.getCt();
+    keyValue.push_back(combined);
+    pos = rp.getHeaders().find("\r\n");
+    if (pos == std::string::npos)
+        return ;
+    std::string headers = rp.getHeaders().substr(pos + 2);
+    std::string headerName;
+    size_t pos2;
+    size_t pos3;
+    std::string headerContent;
+    while (1)
+    {
+        pos2 = headers.find(":");
+        if (pos2 == std::string::npos)
+        break;
+        headerName = "HTTP_" + headers.substr(0, pos2);
+        for (size_t i = 0; i < headerName.length(); i++)
+        {
+            headerName[i] = std::toupper(headerName[i]);
+            if (headerName[i] == '-')
+            headerName[i] = '_';
+        }
+        headerContent = headers.substr(pos2 + 2);
+        pos3 = headerContent.find("\r\n");
+        if (pos3 == std::string::npos)
+            headerContent = headerContent.substr(0);
+        else
+            headerContent = headerContent.substr(0, pos3);
+        if (headerName == "HTTP_CONTENT_TYPE" || headerName == "HTTP_CONTENT_LENGTH" || headerName == "HTTP_HOST")
+        {
+        }
+        else
+        {
+            combined = headerName + "=" + headerContent;
+            keyValue.push_back(combined);
+        }
+        pos = headers.find("\r\n");
+        if (pos == std::string::npos)
+            break;
+        headers = headers.substr(pos + 2);
+    }
+    for (size_t i = 0; i < keyValue.size(); i++)
+    {
+        std::cout << keyValue[i] << std::endl;
+    }
+    
 }
 
 int    ResponseBuilder::runCgi(RequestParser rp, ServerConfig &config, ClientInfo &client)
@@ -371,7 +431,7 @@ int    ResponseBuilder::runCgi(RequestParser rp, ServerConfig &config, ClientInf
     if (pipe(readfds) == -1 || pipe(writefds) == -1)
         return (500);
     prepareEnv(rp, config, client);
-    return 0;
+    return (0);
 }
 
 std::string ResponseBuilder::getFullPath(RequestParser rp)

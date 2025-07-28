@@ -1,11 +1,9 @@
 #if !defined(CLIENTSESSION_HPP)
 #define CLIENTSESSION_HPP
 
-#include "MySocket.hpp"
 #include "RequestParser.hpp"
 #include "ResponseBuilder.hpp"
 #include "ListeningSocket.hpp"
-#include "ConfigParser.hpp"
 
 struct ClientInfo {
     int fd;

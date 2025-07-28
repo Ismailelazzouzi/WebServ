@@ -32,13 +32,43 @@ RequestParser::RequestParser(std::string &buffer, ServerConfig &config) : config
     splited[k] = firstLine.substr(j);
     method = splited[0];
     if (splited[1] == "/")
-        path = config.index;
+        fullpath = config.index;
     else
-        path = splited[1];
+        fullpath = splited[1];
     version = splited[2];
     size_t pos = fullRequest.find("\r\n\r\n");
     requestHeaders = fullRequest.substr(0, pos);
     requestBody = fullRequest.substr(pos + 4);
+    pos = requestHeaders.find("Host: ");
+    if (pos == std::string::npos)
+        pos = requestHeaders.find("host: ");
+    serverName = requestHeaders.substr(pos + 6);
+    pos = serverName.find(":");
+    serverName = serverName.substr(0, pos);
+    pos = requestHeaders.find("Content-Type: ");
+    if (pos == std::string::npos)
+        pos = requestHeaders.find("content-type: ");
+    if (pos != std::string::npos)
+    {
+        ct = requestHeaders.substr(pos + 14);
+        pos = ct.find("\r\n");
+        ct = ct.substr(0, pos);
+    }
+    pos = fullpath.find(".");
+    if (pos != std::string::npos)
+        extraInfo = fullpath.substr(pos);
+    pos = extraInfo.find("/");
+    if (pos == std::string::npos)
+    {
+        extraInfo.clear();
+        path = fullpath.substr(0);
+        return ;
+    }
+    else
+        extraInfo = extraInfo.substr(pos);
+    pos = fullpath.find(extraInfo);
+    if (pos != std::string::npos)
+        path = fullpath.substr(0, pos);
 }
 
 const ServerConfig &RequestParser::getConfig() const
@@ -54,6 +84,26 @@ const std::string &RequestParser::getMethod() const
 const std::string &RequestParser::getPath() const
 {
     return path;
+}
+
+const std::string &RequestParser::getFullPath() const
+{
+    return fullpath;
+}
+
+const std::string &RequestParser::getExtraInfo() const
+{
+    return extraInfo;
+}
+
+const std::string &RequestParser::getServerName() const
+{
+    return serverName;
+}
+
+const std::string &RequestParser::getCt() const
+{
+    return ct;
 }
 
 const std::string &RequestParser::getVersion() const

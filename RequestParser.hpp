@@ -1,7 +1,6 @@
 #if !defined(REQUESTPARSER_HPP)
 #define REQUESTPARSER_HPP
 
-#include "MySocket.hpp"
 #include "ConfigParser.hpp"
 
 class RequestParser
@@ -13,16 +12,24 @@ private:
     std::string requestHeaders;
     std::string method;
     std::string path;
+    std::string fullpath;
+    std::string extraInfo;
     std::string version;
     std::string contentType;
+    std::string serverName;
+    std::string ct;
 public:
     RequestParser();
     RequestParser(std::string &buffer, ServerConfig &config);
     const ServerConfig &getConfig() const;
     const std::string &getMethod() const;
     const std::string &getPath() const;
+    const std::string &getFullPath() const;
+    const std::string &getExtraInfo() const;
     const std::string &getVersion() const;
     const std::string &getContentType() const;
+    const std::string &getServerName() const;
+    const std::string &getCt() const;
     const std::string &getIndex() const;
     const std::string &getUploadPath() const;
     const std::string &getBody() const;

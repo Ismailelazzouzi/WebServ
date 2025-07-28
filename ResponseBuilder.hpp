@@ -2,7 +2,9 @@
 #define RESPONSEBUILDER_HPP
 
 #include "RequestParser.hpp"
-#include "ClientSession.hpp"
+
+
+struct ClientInfo;
 
 struct cgiData
 {

@@ -1,4 +1,5 @@
-#include "network.hpp"
+#include "ListeningSocket.hpp"
+#include "ClientSession.hpp"
 
 int checkExt(std::string configFile)
 {
