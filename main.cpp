@@ -40,6 +40,7 @@ int main(int ac, char **av)
         parser.parse(configFile);
         const std::vector<ServerConfig> &configs = parser.getServers();
         ClientSession cl = ClientSession(parser);
+        std::cout << "SERVER IS RUNNUNG" << std::endl;
         cl.run();
     }
 

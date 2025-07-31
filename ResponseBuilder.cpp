@@ -10,7 +10,7 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
     {
         std::string localPath;
         std::string path = rp.getPath();
-        int signal;
+        int signal = 1;
         if (path[0] == '/')
             localPath = rp.getRoot() + path;
         else
@@ -18,18 +18,88 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
         rp.setType();
         if (rp.getContentType() == "cgi")
             signal = runCgi(rp, config, client);
-        // if (signal == 0)
-        //     return;
-        // else
-        // {
-        //     if (signal == 404 || signal == 403 || signal == 500)
-        //     {
-        //         //sendCustomError(signal);
-        //         return;
-        //     }
-        //     else
-        //         rp.setContentType("text/plain");
-        // }
+        if (signal == 0)
+            return;
+        else
+        {
+            if (signal == 500)
+            {
+                std::map<int, std::string> errors = rp.getErrorPages();
+                std::string errorPath;
+                errorPath = "./defaultErrors/500.html";
+                if (errors.find(500) != errors.end())
+                    errorPath = rp.getRoot() + rp.getErrorPages().at(500);
+                std::ifstream errorFile(errorPath);
+                std::string errorContent;
+                if (!errorFile.is_open())
+                {
+                    errorPath = "./defaultErrors/500.html";
+                    std::ifstream defaultErrorFile(errorPath);
+                    errorContent = std::string((std::istreambuf_iterator<char>(defaultErrorFile)),
+                        (std::istreambuf_iterator<char>()));
+                }
+                else
+                {
+                    errorContent = std::string((std::istreambuf_iterator<char>(errorFile)),
+                        (std::istreambuf_iterator<char>()));
+                }
+                fileLen = errorContent.length();
+                toSend = rp.getVersion() + " 500 Internal Server Error\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                return ;
+            }
+            else if (signal == 404)
+            {
+                std::map<int, std::string> errors = rp.getErrorPages();
+                std::string errorPath;
+                errorPath = "./defaultErrors/404.html";
+                if (errors.find(404) != errors.end())
+                    errorPath = rp.getRoot() + rp.getErrorPages().at(404);
+                std::ifstream errorFile(errorPath);
+                std::string errorContent;
+                if (!errorFile.is_open())
+                {
+                    errorPath = "./defaultErrors/404.html";
+                    std::ifstream defaultErrorFile(errorPath);
+                    errorContent = std::string((std::istreambuf_iterator<char>(defaultErrorFile)),
+                        (std::istreambuf_iterator<char>()));
+                }
+                else
+                {
+                    errorContent = std::string((std::istreambuf_iterator<char>(errorFile)),
+                        (std::istreambuf_iterator<char>()));
+                }
+                fileLen = errorContent.length();
+                toSend = rp.getVersion() + " 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                return ;
+            }
+            else if (signal == 403)
+            {
+                std::map<int, std::string> errors = rp.getErrorPages();
+                std::string errorPath;
+                errorPath = "./defaultErrors/403.html";
+                if (errors.find(403) != errors.end())
+                    errorPath = rp.getRoot() + rp.getErrorPages().at(403);
+                std::ifstream errorFile(errorPath);
+                std::string errorContent;
+                if (!errorFile.is_open())
+                {
+                    errorPath = "./defaultErrors/403.html";
+                    std::ifstream defaultErrorFile(errorPath);
+                    errorContent = std::string((std::istreambuf_iterator<char>(defaultErrorFile)),
+                        (std::istreambuf_iterator<char>()));
+                }
+                else
+                {
+                    errorContent = std::string((std::istreambuf_iterator<char>(errorFile)),
+                        (std::istreambuf_iterator<char>()));
+                }
+                fileLen = errorContent.length();
+                toSend = rp.getVersion() + " 403 Forbidden\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                return ;
+            }
+            else
+                rp.setContentType("text/plain");
+        }
         if (rp.getMethod() == "DELETE")
         {
             if (std::remove(localPath.c_str()) == 0)
@@ -327,7 +397,7 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
     }
 }
 
-void    prepareEnv(RequestParser rp, ServerConfig &config, ClientInfo &client)
+char    **prepareEnv(RequestParser rp, ServerConfig &config, ClientInfo &client)
 {
     std::vector<std::string> keyValue;
     std::string combined;
@@ -369,7 +439,7 @@ void    prepareEnv(RequestParser rp, ServerConfig &config, ClientInfo &client)
     keyValue.push_back(combined);
     pos = rp.getHeaders().find("\r\n");
     if (pos == std::string::npos)
-        return ;
+        return NULL;
     std::string headers = rp.getHeaders().substr(pos + 2);
     std::string headerName;
     size_t pos2;
@@ -379,7 +449,7 @@ void    prepareEnv(RequestParser rp, ServerConfig &config, ClientInfo &client)
     {
         pos2 = headers.find(":");
         if (pos2 == std::string::npos)
-        break;
+            break;
         headerName = "HTTP_" + headers.substr(0, pos2);
         for (size_t i = 0; i < headerName.length(); i++)
         {
@@ -406,11 +476,45 @@ void    prepareEnv(RequestParser rp, ServerConfig &config, ClientInfo &client)
             break;
         headers = headers.substr(pos + 2);
     }
+    char **env = new char*[keyValue.size() + 1];
     for (size_t i = 0; i < keyValue.size(); i++)
     {
-        std::cout << keyValue[i] << std::endl;
+        env[i] = new char[keyValue[i].length() + 1];
+        int j = 0;
+        while (j < keyValue[i].length())
+        {
+            env[i][j] = keyValue[i][j];
+            j++;
+        }
+        env[i][j] = '\0';
     }
-    
+    env[keyValue.size()] = NULL;
+    return (env);
+}
+
+void    cleanup(char **env, int *readFds, int *writeFds)
+{
+    if (readFds)
+    {
+        close(readFds[0]);
+        close(readFds[1]);
+    }
+    if (writeFds)
+    {
+        close (writeFds[0]);
+        close(writeFds[1]);
+    }
+    if (env)
+    {
+        size_t len = 0;
+        while (env[len])
+            len++;
+        for (size_t i = 0; i < len; i++)
+        {
+            delete[] env[i];
+        }
+        delete[] env;
+    }
 }
 
 int    ResponseBuilder::runCgi(RequestParser rp, ServerConfig &config, ClientInfo &client)
@@ -430,8 +534,61 @@ int    ResponseBuilder::runCgi(RequestParser rp, ServerConfig &config, ClientInf
     int writefds[2];
     if (pipe(readfds) == -1 || pipe(writefds) == -1)
         return (500);
-    prepareEnv(rp, config, client);
-    return (0);
+    char **env = prepareEnv(rp, config, client);
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        close(writefds[1]);
+        close(readfds[0]);
+        dup2(writefds[0], STDIN_FILENO);
+        dup2(readfds[1], STDOUT_FILENO);
+        close(writefds[0]);
+        close(readfds[1]);
+        char *str = new char[localPath.length() + 1];
+        std::strcpy(str, localPath.c_str());
+        char* const argv[] = {str, NULL};
+        if (execve(localPath.c_str(), argv, env) == -1)
+        {
+            perror("EXECVE FAILED !");
+            delete[] str;
+            exit(EXIT_FAILURE);
+        }
+    }
+    if (pid > 0)
+    {
+        close(writefds[0]);
+        close(readfds[1]);
+        if (rp.getBody().length() > 0)
+        {
+            write(writefds[1], rp.getBody().c_str(), rp.getBody().length());
+            close(writefds[1]);
+        }
+        std::string cgiOutput;
+        char buffer[5000];
+        size_t bytesRead;
+        while ((bytesRead = read(readfds[0], buffer, sizeof(buffer))) > 0)
+        {
+            cgiOutput.append(buffer, bytesRead);
+        }
+        if (bytesRead == -1)
+        {
+            perror("ERROR reading from cgi pipeline");
+            cleanup(env, NULL, NULL);
+            close(readfds[0]);
+            return (500);
+        }
+        close(readfds[0]);
+        int status;
+        waitpid(pid, &status, 0);
+        cleanup(env, NULL, NULL);
+        std::cout << cgiOutput << std::endl;
+        return (0);
+    }
+    else
+    {
+        cleanup(env, readfds, writefds);;
+        return (500);
+    }
 }
 
 std::string ResponseBuilder::getFullPath(RequestParser rp)
