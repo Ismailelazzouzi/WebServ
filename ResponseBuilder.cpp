@@ -581,7 +581,14 @@ int    ResponseBuilder::runCgi(RequestParser rp, ServerConfig &config, ClientInf
         int status;
         waitpid(pid, &status, 0);
         cleanup(env, NULL, NULL);
-        std::cout << cgiOutput << std::endl;
+        std::string cgiHeaders;
+        std::string cgiBody;
+        size_t pos = cgiOutput.find("\r\n\r\n");
+        if (pos == std::string::npos)
+            return (500);
+        cgiHeaders = cgiOutput.substr(0, pos);
+        cgiBody = cgiOutput.substr(pos + 4);
+        toSend = rp.getVersion() + " 200 OK\r\n" + cgiHeaders + "\r\nContent-Length: " + std::to_string(cgiBody.length()) + "\r\n\r\n" + cgiBody;
         return (0);
     }
     else
