@@ -59,18 +59,20 @@ void    ConfigParser::parse(const std::string &filepath)
     }
     std::string line;
     bool    insideBlock = false;
+    bool    insideLocation = false;
     ServerConfig current;
+    LocationConfig currentLoc;
     while (std::getline(file, line))
     {
         line = trim(line);
         if (line.empty() || line[0] == '#')
-        continue;
+            continue;
         if (line == "server {")
         {
             insideBlock = true;
             current = ServerConfig();
         }
-        else if (line == "}")
+        else if (line == "}" && insideLocation == false)
         {
             insideBlock = false;
             if (current.uploadPath.empty())
@@ -79,16 +81,21 @@ void    ConfigParser::parse(const std::string &filepath)
             }
             servers.push_back(current);
         }
+        else if (line == "}" && insideLocation == true)
+        {
+            insideLocation = false;
+            current.locations.push_back(currentLoc);
+        }
         else if (insideBlock == true)
         {
             size_t spacePos = line.find(' ');
             if (spacePos == std::string::npos)
                 continue;
             std::string directive = line.substr(0, spacePos);
-            if (directive == "listen" || directive == "root"
-                    || directive == "index" || directive == "autoindex"
-                    || directive == "error_page" || directive == "upload_path"
-                    || directive == "client_max_body_size")
+            if (directive == "listen" || directive == "root" || directive == "return" || directive == "location"
+                    || directive == "index" || directive == "autoindex" || directive == "server_name"
+                    || directive == "error_page" || directive == "upload_location"
+                    || directive == "client_max_body_size" || directive == "methods" || directive == "cgi_ext")
             {
                 std::string value = trim(line.substr(line.find(' ') + 1));
                 if (!value.empty() && value.back() == ';')
@@ -96,19 +103,62 @@ void    ConfigParser::parse(const std::string &filepath)
                 if (directive == "listen")
                     current.port = std::stoi(value);
                 else if (directive == "root")
-                    current.root = value;
+                {
+                    if (insideLocation == false)
+                        current.root = value;
+                    else
+                        currentLoc.root = value;
+                }
+                else if (directive == "server_name")
+                    current.serverName = value;
                 else if (directive == "index")
-                    current.index = value;
+                {
+                    if (insideLocation == false)
+                        current.index = value;
+                    else
+                        currentLoc.index = value;
+                }
                 else if (directive == "client_max_body_size")
                     current.maxClientBody = extractSize(value);
-                else if (directive == "upload_path")
-                    current.uploadPath = current.root + value;
+                else if (directive == "methods")
+                    currentLoc.methods = value;
+                else if (directive == "return")
+                {
+                    int i = 0;
+                    while (std::isdigit(value[i]))
+                        i++;
+                    if (i > 0)
+                    {
+                        std::string code = value.substr(0, i);
+                        currentLoc.redirCode = std::atol(code.c_str());
+                    }
+                    currentLoc.redirPath = trim(value.substr(i));
+                }
+                else if (directive == "cgi_ext")
+                    currentLoc.cgiExt = value;
+                else if (directive == "upload_location")
+                {
+                    if (insideLocation == false)
+                        current.uploadPath = current.root + value;
+                    else
+                        currentLoc.uploadLoc = value;
+                }
                 else if (directive == "autoindex")
                 {
                     if (value == "on")
-                        current.autoindex = 1;
+                    {
+                        if (insideLocation == false)
+                            current.autoindex = 1;
+                        else
+                            currentLoc.autoindex = 1;
+                    }
                     else
-                        current.autoindex = 0;
+                    {
+                        if (insideLocation == false)
+                            current.autoindex = 0;
+                        else
+                            currentLoc.autoindex = 0;
+                    }
                 }
                 else if (directive == "error_page")
                 {
@@ -122,17 +172,22 @@ void    ConfigParser::parse(const std::string &filepath)
                         current.errorPages[code] = path;
                     }
                 }
+                else if (directive == "location")
+                {
+                    insideLocation = true;
+                    currentLoc = LocationConfig();
+                    value = trim(value);
+                    if (value[value.length() - 1] != '{' || value[0] != '/')
+                    {
+                        perror("MALFORMED CONFIG FILE");
+                        exit(EXIT_FAILURE);
+                    }
+                    currentLoc.path = trim(value.substr(0 ,value.find('{')));
+                    std::cout << currentLoc.path << std::endl;
+                }
             }
             else
                 std::cerr << "Warning: unknown directive: " << directive << std::endl;
-        }
-    }
-    for (size_t i = 0; i < servers.size(); i++)
-    { 
-        if (servers[i].port == 0 || servers[i].root.empty() || servers[i].index.empty())
-        {
-            std::cerr << "Error: missing required config values on server block " << i << std::endl;
-            exit(EXIT_FAILURE);
         }
     }
 }

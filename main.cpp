@@ -38,20 +38,8 @@ int main(int ac, char **av)
         }
         ConfigParser parser;
         parser.parse(configFile);
-        const std::vector<ServerConfig> &configs = parser.getServers();
-        ClientSession cl = ClientSession(parser);
-        std::cout << "SERVER IS RUNNUNG" << std::endl;
-        cl.run();
+        // ClientSession cl = ClientSession(parser);
+        // std::cout << "SERVER IS RUNNUNG" << std::endl;
+        // cl.run();
     }
-
-
-
-    
-
-    // int listen_fd, bytes;
-    // char buffer[1024];
-    // std::cout << "Starting...!" << std::endl;
-    // std::cout << "Creating Listening Socket" << std::endl;
-    // ListeningSocket ls = ListeningSocket(AF_INET, SOCK_STREAM, 0, 8080, INADDR_ANY, 10);
-    // std::cout << "SUCCESS!" << std::endl;
 }

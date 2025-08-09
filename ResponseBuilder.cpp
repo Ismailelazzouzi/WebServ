@@ -433,7 +433,10 @@ char    **prepareEnv(RequestParser rp, ServerConfig &config, ClientInfo &client)
     keyValue.push_back(combined);
     combined = "SERVER_SOFTWARE=serverMli7";
     keyValue.push_back(combined);
-    combined = "SERVER_NAME=" + rp.getServerName();
+    if (!rp.getConfig().serverName.empty())
+        combined = "SERVER_NAME=" + rp.getConfig().serverName;
+    else
+        combined = "SERVER_NAME=" + rp.getServerName();
     keyValue.push_back(combined);
     combined = "CONTENT_TYPE=" + rp.getCt();
     keyValue.push_back(combined);

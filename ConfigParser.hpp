@@ -3,9 +3,24 @@
 
 #include "MySocket.hpp"
 
+struct LocationConfig
+{
+    std::string methods;
+    std::string path;
+    std::string root;
+    std::string index;
+    std::string redirPath;
+    std::string cgiExt;
+    std::string uploadLoc;
+    int         redirCode;
+    bool autoindex;
+};
+
 struct ServerConfig
 {
     int port;
+    std::vector<LocationConfig>locations;
+    std::string serverName;
     std::string root;
     std::string index;
     std::string clientIp;
@@ -28,4 +43,4 @@ public:
 };
 
 
-#endif // CONFIGPARSER_HPP
+#endif
