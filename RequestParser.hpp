@@ -6,7 +6,7 @@
 class RequestParser
 {
 private:
-    ServerConfig config;
+    ServerConfig *config;
     std::string fullRequest;
     std::string requestBody;
     std::string requestHeaders;
@@ -18,10 +18,11 @@ private:
     std::string contentType;
     std::string serverName;
     std::string ct;
+    LocationConfig *location;
 public:
     RequestParser();
-    RequestParser(std::string &buffer, ServerConfig &config);
-    const ServerConfig &getConfig() const;
+    RequestParser(std::string &buffer, ServerConfig *config);
+    const ServerConfig *getConfig() const;
     const std::string &getMethod() const;
     const std::string &getPath() const;
     const std::string &getFullPath() const;
@@ -38,10 +39,12 @@ public:
     std::map<int, std::string> getErrorPages();
     const std::string &getRoot() const;
     int getMaxClientBody() const;
-    void  setType();
+    void  setType(std::string &path);
     void setContentType(std::string type);
+    LocationConfig *getLocation();
+
 };
 
-
+    
 
 #endif // REQUESTPARSER_HPP

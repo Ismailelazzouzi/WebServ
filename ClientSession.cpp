@@ -1,19 +1,25 @@
 #include "ClientSession.hpp"
 #include <arpa/inet.h>
 
-ClientSession::ClientSession(ConfigParser cp) : cp(cp)
+ClientSession::ClientSession(ConfigParser &cp) : cp(cp)
 {
     for (size_t i = 0; i < cp.getServers().size(); i++)
     {
         
         int listenFd;
         pollfd serverPoll;
-        lss.push_back(ListeningSocket(AF_INET, SOCK_STREAM, 0, cp.getServers()[i].port, INADDR_ANY, 10));
-        listenFd = lss[i].getSock();
-        serverPoll.fd = listenFd;
-        serverPoll.events = POLLIN;
-        listenFds.push_back(listenFd);
-        fds.push_back(serverPoll);
+        ListeningSocket ls;
+        for (size_t j = 0; j < cp.getServers()[i].ports.size(); j++)
+        {
+            ls = ListeningSocket(AF_INET, SOCK_STREAM, 0, cp.getServers()[i].ports[j], INADDR_ANY, 10);
+            lss[ls.getSock()] = ls;
+            listenFd = ls.getSock();
+            serverPoll.fd = listenFd;
+            serverPoll.events = POLLIN;
+            listenFds.push_back(listenFd);
+            fds.push_back(serverPoll);
+            configByFd[listenFd] = &this->cp.getServers()[i];
+        }
     }
 }
 
@@ -44,57 +50,98 @@ bool    fullRequest(std::string &request)
     return true;
 }
 
+LocationConfig *findLocationConfig(ServerConfig *config, const std::string &uri)
+{
+    LocationConfig *bestMatch = nullptr;
+    size_t maxLen = 0;
+    
+    for (size_t i = 0; i < config->locations.size(); i++)
+    {
+        if (uri.rfind(config->locations[i].path, 0) == 0)
+        {
+            if (config->locations[i].path.length() > maxLen)
+            {
+                maxLen = config->locations[i].path.length();
+                bestMatch = &config->locations[i];
+            }
+        }
+    }
+    std::string str;
+    str = "/" + config->index;
+    if (bestMatch && bestMatch->path.compare("/") == 0 && (uri.compare(str) != 0))
+        return nullptr;
+    return bestMatch;
+}
+
 void    ClientSession::run()
 {
-    std::vector<ClientInfo> clients;
+    std::map<int , ClientInfo> clients;
     while (true)
     {
         if (poll(fds.data(), fds.size(), -1) <= 0)
             continue ;
-        for (size_t i = 0; i < listenFds.size(); i++)
+        for (size_t i = 0; i < fds.size(); i++)
         {
             if (fds[i].revents & POLLIN)
             {
-                int listener = lss[i].acceptClient();
-                struct sockaddr_storage client_addr_storage;
-                socklen_t client_addr_len = sizeof(client_addr_storage);
-                std::string clientIp;
-                std::string clientPort;
-                if (getpeername(listener, (sockaddr *)&client_addr_storage, &client_addr_len) == 0)
+                int localPort;
+                int listener = fds[i].fd;
+                struct sockaddr_in sin;
+                socklen_t len = sizeof(sin);
+                if (getsockname(listener, (struct sockaddr *)&sin, &len) == -1)
                 {
-                    char buffer[INET6_ADDRSTRLEN];
-                    if (client_addr_storage.ss_family == AF_INET)
-                    {
-                        struct sockaddr_in *s = (struct sockaddr_in *)&client_addr_storage;
-                        inet_ntop(AF_INET, &s->sin_addr, buffer, sizeof(buffer));
-                        clientIp = buffer;
-                        clientPort = std::to_string(ntohs(s->sin_port));
-                    }
-                    else if (client_addr_storage.ss_family == AF_INET6)
-                    {
-                        struct sockaddr_in6 *s = (struct sockaddr_in6 *)&client_addr_storage;
-                        inet_ntop(AF_INET6, &s->sin6_addr, buffer, sizeof(buffer));
-                        clientIp = buffer;
-                        clientPort = std::to_string(ntohs(s->sin6_port));
-                    }
+                    perror("getsockname");
+                    continue ;
                 }
-                pollfd newPollfd;
-                ClientInfo client;
-                newPollfd.fd = listener;
-                newPollfd.events = POLLIN;
-                fds.push_back(newPollfd);
-                client.fd = listener;
-                client.config = cp.getServers()[i];
-                client.remoteIp = clientIp;
-                client.remotePort = clientPort;
-                clients.push_back(client);
+                else
+                    localPort = ntohs(sin.sin_port);
+                if (std::find(listenFds.begin(), listenFds.end(), fds[i].fd) != listenFds.end())
+                {
+                    int clientFd = lss.at(fds[i].fd).acceptClient();
+                    if (clientFd < 0)
+                        continue;
+                    struct sockaddr_storage client_addr_storage;
+                    socklen_t client_addr_len = sizeof(client_addr_storage);
+                    std::string clientIp;
+                    std::string clientPort;
+                    if (getpeername(clientFd, (sockaddr *)&client_addr_storage, &client_addr_len) == 0)
+                    { 
+                        char buffer[INET6_ADDRSTRLEN];
+                        if (client_addr_storage.ss_family == AF_INET)
+                        {
+                            struct sockaddr_in *s = (struct sockaddr_in *)&client_addr_storage;
+                            inet_ntop(AF_INET, &s->sin_addr, buffer, sizeof(buffer));
+                            clientIp = buffer;
+                            clientPort = std::to_string(ntohs(s->sin_port));
+                        }
+                        else if (client_addr_storage.ss_family == AF_INET6)
+                        {
+                            struct sockaddr_in6 *s = (struct sockaddr_in6 *)&client_addr_storage;
+                            inet_ntop(AF_INET6, &s->sin6_addr, buffer, sizeof(buffer));
+                            clientIp = buffer;
+                            clientPort = std::to_string(ntohs(s->sin6_port));
+                        }
+                    }
+                    pollfd newPollfd;
+                    ClientInfo client;
+                    newPollfd.fd = clientFd;
+                    newPollfd.events = POLLIN;
+                    fds.push_back(newPollfd);
+                    client.fd = clientFd;
+                    client.config = *(configByFd.at(listener));
+                    client.remoteIp = clientIp;
+                    client.remotePort = clientPort;
+                    client.localPort = std::to_string(localPort);
+                    clients[clientFd] = client;
+                }
+                else
+                    continue;
             }        
         }
         for (int i = static_cast<int>(fds.size()) - 1; i >= (int)listenFds.size(); i--)
         {
             char buffer[1024];
             int clientFd = fds[i].fd;
-            int clientPos = currentClientPos(clients, clientFd);
             int bytes;
             if (fds[i].revents & POLLIN)
             {
@@ -104,27 +151,21 @@ void    ClientSession::run()
                     int clientFd = fds[i].fd;
                     close(fds[i].fd);
                     fds.erase(fds.begin() + i);
-                    for (size_t j = 0; j < clients.size(); ++j)
-                    {
-                        if (clients[j].fd == clientFd)
-                        {
-                            clients.erase(clients.begin() + j);
-                            break;
-                        }
-                    }
+                    clients.erase(clientFd);
                     continue ;
                 }
                 else
                 {
                     buffer[bytes] = '\0';
                     std::string request(buffer, bytes);
-                    clients[clientPos].requestBuffer += request;
-                    if (fullRequest(clients[clientPos].requestBuffer))
+                    clients[fds[i].fd].requestBuffer += request;
+                    if (fullRequest(clients[fds[i].fd].requestBuffer))
                     {
-                        clients[clientPos].rp = RequestParser(clients[clientPos].requestBuffer, clients[clientPos].config);
-                        clients[clientPos].requestBuffer.clear();
-                        clients[clientPos].rb = ResponseBuilder(clients[clientPos].rp, clients[clientPos].config, clients[clientPos]);
-                        clients[clientPos].responseBuffer = clients[clientPos].rb.getToSend();
+                        clients[fds[i].fd].rp = RequestParser(clients[fds[i].fd].requestBuffer, &clients[fds[i].fd].config);
+                        clients[fds[i].fd].requestBuffer.clear();
+                        LocationConfig *location = findLocationConfig(&clients[fds[i].fd].config , clients[fds[i].fd].rp.getPath());
+                        clients[fds[i].fd].rb = ResponseBuilder(&clients[fds[i].fd].rp, clients[fds[i].fd].config, clients[fds[i].fd], location);
+                        clients[fds[i].fd].responseBuffer = clients[fds[i].fd].rb.getToSend();
                         fds[i].events = POLLOUT;
                     }
                     else
@@ -133,33 +174,25 @@ void    ClientSession::run()
             }
             if (fds[i].revents & POLLOUT)
             {
-                clients[clientPos].byteSent = send(fds[i].fd, 
-                    clients[clientPos].responseBuffer.c_str(), clients[clientPos].responseBuffer.length(), 0);
-                if (clients[clientPos].byteSent <= 0)
+                clients[fds[i].fd].byteSent = send(fds[i].fd, 
+                    clients[fds[i].fd].responseBuffer.c_str(), clients[fds[i].fd].responseBuffer.length(), 0);
+                if (clients[fds[i].fd].byteSent <= 0)
                 {
                     perror("FAILED TO SEND");
                     close(fds[i].fd);
                     fds.erase(fds.begin() + i);
+                    clients.erase(fds[i].fd);
                     continue ;
                 }
-                if (clients[clientPos].byteSent == clients[clientPos].responseBuffer.length())
+                if (clients[fds[i].fd].byteSent == clients[fds[i].fd].responseBuffer.length())
                     fds[i].events = POLLIN;
-                else if (clients[clientPos].byteSent < clients[clientPos].responseBuffer.length())
-                    clients[clientPos].responseBuffer = clients[clientPos].responseBuffer.substr(clients[clientPos].byteSent);
+                else if (clients[fds[i].fd].byteSent < clients[fds[i].fd].responseBuffer.length())
+                    clients[fds[i].fd].responseBuffer = clients[fds[i].fd].responseBuffer.substr(clients[fds[i].fd].byteSent);
             }
         }
     }
 }
 
-int ClientSession::currentClientPos(const std::vector<ClientInfo> &clients, int clientFd)
-{
-    for (size_t i = 0; i < clients.size(); i++)
-    {
-        if (clients[i].fd == clientFd)
-            return i;
-    }
-    return (-1);    
-}
 
 RequestParser ClientSession::getRp()
 {

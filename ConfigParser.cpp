@@ -101,7 +101,7 @@ void    ConfigParser::parse(const std::string &filepath)
                 if (!value.empty() && value.back() == ';')
                     value.pop_back();
                 if (directive == "listen")
-                    current.port = std::stoi(value);
+                    current.ports.push_back(std::stoi(value));
                 else if (directive == "root")
                 {
                     if (insideLocation == false)
@@ -177,13 +177,13 @@ void    ConfigParser::parse(const std::string &filepath)
                     insideLocation = true;
                     currentLoc = LocationConfig();
                     value = trim(value);
-                    if (value[value.length() - 1] != '{' || value[0] != '/')
+                    if (value[value.length() - 1] != '{' || !(value[0] == '/' || value[0] == '.'))
                     {
+                        std::cout << value[value.length() - 1] << "-----------" << value[0] << std::endl;
                         perror("MALFORMED CONFIG FILE");
                         exit(EXIT_FAILURE);
                     }
                     currentLoc.path = trim(value.substr(0 ,value.find('{')));
-                    std::cout << currentLoc.path << std::endl;
                 }
             }
             else

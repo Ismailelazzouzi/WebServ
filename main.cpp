@@ -38,8 +38,8 @@ int main(int ac, char **av)
         }
         ConfigParser parser;
         parser.parse(configFile);
-        // ClientSession cl = ClientSession(parser);
-        // std::cout << "SERVER IS RUNNUNG" << std::endl;
-        // cl.run();
+        ClientSession cl = ClientSession(parser);
+        std::cout << "SERVER IS RUNNUNG" << std::endl;
+        cl.run();
     }
 }

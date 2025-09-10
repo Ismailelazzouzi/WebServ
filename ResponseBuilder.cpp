@@ -4,31 +4,45 @@
 ResponseBuilder::ResponseBuilder()
 {}
 
-ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientInfo &client) : rp(rp)
+ResponseBuilder::ResponseBuilder(RequestParser *rp, ServerConfig &config, ClientInfo &client, LocationConfig *location) : rp(rp), location(location)
 {
-    if (rp.getMethod() == "GET" || rp.getMethod() == "DELETE" || rp.getMethod() == "POST")
+    if (rp->getMethod() == "GET" || rp->getMethod() == "DELETE" || rp->getMethod() == "POST")
     {
         std::string localPath;
-        std::string path = rp.getPath();
+        localPath = getRoot() + getPath();
+        if (getRoot()[getRoot().length() - 1] != '/' && getPath()[0] != '/')
+            localPath = getRoot() + "/" + getPath();
+        std::string path = rp->getPath();
         int signal = 1;
-        if (path[0] == '/')
-            localPath = rp.getRoot() + path;
-        else
-            localPath = rp.getRoot() + "/" + path;
-        rp.setType();
-        if (rp.getContentType() == "cgi")
-            signal = runCgi(rp, config, client);
-        if (signal == 0)
-            return;
-        else
+        DIR *dir = opendir(localPath.c_str());
+        if (dir && localPath[localPath.length() -1] != '/')
+        {
+            toSend = rp->getVersion() + " 301 Moved Permenantly\r\n" + "Location: " + rp->getFullPath()  + "/" + "\r\nContent-Length: 0" + "\r\n\r\n";
+            return ;
+        }
+        if (location != nullptr)
+        {
+            if (location->redirCode != 0)
+                signal = 301;
+            else if (location->methods.find(rp->getMethod()) == std::string::npos)
+                signal = 405;
+        }
+        rp->setType(localPath);
+        if (signal == 1 && rp->getContentType() == "cgi" && rp->getMethod() == "GET")
+        {
+            signal = runCgi(rp, config, client, location);
+        }
+        else if (signal == 0)
+            return ;
+        else if (signal != 0 && signal != 1)
         {
             if (signal == 500)
             {
-                std::map<int, std::string> errors = rp.getErrorPages();
+                std::map<int, std::string> errors = rp->getErrorPages();
                 std::string errorPath;
                 errorPath = "./defaultErrors/500.html";
                 if (errors.find(500) != errors.end())
-                    errorPath = rp.getRoot() + rp.getErrorPages().at(500);
+                    errorPath = rp->getRoot() + rp->getErrorPages().at(500);
                 std::ifstream errorFile(errorPath);
                 std::string errorContent;
                 if (!errorFile.is_open())
@@ -44,16 +58,16 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
                         (std::istreambuf_iterator<char>()));
                 }
                 fileLen = errorContent.length();
-                toSend = rp.getVersion() + " 500 Internal Server Error\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                toSend = rp->getVersion() + " 500 Internal Server Error\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
                 return ;
             }
             else if (signal == 404)
             {
-                std::map<int, std::string> errors = rp.getErrorPages();
+                std::map<int, std::string> errors = rp->getErrorPages();
                 std::string errorPath;
                 errorPath = "./defaultErrors/404.html";
                 if (errors.find(404) != errors.end())
-                    errorPath = rp.getRoot() + rp.getErrorPages().at(404);
+                    errorPath = rp->getRoot() + rp->getErrorPages().at(404);
                 std::ifstream errorFile(errorPath);
                 std::string errorContent;
                 if (!errorFile.is_open())
@@ -69,16 +83,16 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
                         (std::istreambuf_iterator<char>()));
                 }
                 fileLen = errorContent.length();
-                toSend = rp.getVersion() + " 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                toSend = rp->getVersion() + " 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
                 return ;
             }
             else if (signal == 403)
             {
-                std::map<int, std::string> errors = rp.getErrorPages();
+                std::map<int, std::string> errors = rp->getErrorPages();
                 std::string errorPath;
                 errorPath = "./defaultErrors/403.html";
                 if (errors.find(403) != errors.end())
-                    errorPath = rp.getRoot() + rp.getErrorPages().at(403);
+                    errorPath = rp->getRoot() + rp->getErrorPages().at(403);
                 std::ifstream errorFile(errorPath);
                 std::string errorContent;
                 if (!errorFile.is_open())
@@ -94,28 +108,58 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
                         (std::istreambuf_iterator<char>()));
                 }
                 fileLen = errorContent.length();
-                toSend = rp.getVersion() + " 403 Forbidden\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                toSend = rp->getVersion() + " 403 Forbidden\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                return ;
+            }
+            else if (signal == 405)
+            {
+                std::map<int, std::string> errors = rp->getErrorPages();
+                std::string errorPath;
+                errorPath = "./defaultErrors/405.html";
+                if (errors.find(405) != errors.end())
+                    errorPath = rp->getRoot() + rp->getErrorPages().at(405);
+                std::ifstream errorFile(errorPath);
+                std::string errorContent;
+                if (!errorFile.is_open())
+                {
+                    errorPath = "./defaultErrors/405.html";
+                    std::ifstream defaultErrorFile(errorPath);
+                    errorContent = std::string((std::istreambuf_iterator<char>(defaultErrorFile)),
+                        (std::istreambuf_iterator<char>()));
+                }
+                else
+                {
+                    errorContent = std::string((std::istreambuf_iterator<char>(errorFile)),
+                        (std::istreambuf_iterator<char>()));
+                }
+                fileLen = errorContent.length();
+                toSend = rp->getVersion() + " 405 Method Not Allowed\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                return ;
+            }
+            else if (location != nullptr && signal == 301)
+            {
+                toSend = rp->getVersion() + " 301 Moved Permenantly\r\n" + "Location: " + location->redirPath + "\r\nContent-Length: 0" + "\r\n\r\n";
                 return ;
             }
             else
-                rp.setContentType("text/plain");
+                rp->setContentType("text/plain");
         }
-        if (rp.getMethod() == "DELETE")
+        if (rp->getMethod() == "DELETE")
         {
             if (std::remove(localPath.c_str()) == 0)
             {
-                toSend = rp.getVersion() + " 204 No Content\r\n\r\n";
+                toSend = rp->getVersion() + " 204 No Content\r\n\r\n";
                 return ;
             }
             else
             {
-                std::map<int, std::string> errors = rp.getErrorPages();
+                std::map<int, std::string> errors = rp->getErrorPages();
                 std::string errorPath;
                 if (errno == ENOENT)
                 {
                     errorPath = "./defaultErrors/404.html";
                     if (errors.find(404) != errors.end())
-                        errorPath = rp.getRoot() + rp.getErrorPages().at(404);
+                        errorPath = rp->getRoot() + rp->getErrorPages().at(404);
                     std::ifstream errorFile(errorPath);
                     std::string errorContent;
                     if (!errorFile.is_open())
@@ -131,14 +175,14 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
                             (std::istreambuf_iterator<char>()));
                     }
                     fileLen = errorContent.length();
-                    toSend = rp.getVersion() + " 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                    toSend = rp->getVersion() + " 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
                     return ;
                 }
                 else
                 {
                     errorPath = "./defaultErrors/403.html";
                     if (errors.find(403) != errors.end())
-                        errorPath = rp.getRoot() + rp.getErrorPages().at(403);
+                        errorPath = rp->getRoot() + rp->getErrorPages().at(403);
                     std::ifstream errorFile(errorPath);
                     std::string errorContent;
                     if (!errorFile.is_open())
@@ -154,20 +198,20 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
                             (std::istreambuf_iterator<char>()));
                     }
                     fileLen = errorContent.length();
-                    toSend = rp.getVersion() + " 403 Forbidden\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                    toSend = rp->getVersion() + " 403 Forbidden\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
                     return ;
                 }
             }
         }
-        if (rp.getMethod() == "POST")
+        if (rp->getMethod() == "POST")
         {
-            if (rp.getBody().size() > rp.getMaxClientBody())
+            if (rp->getBody().size() > rp->getMaxClientBody())
             {
-                std::map<int, std::string> errors = rp.getErrorPages();
+                std::map<int, std::string> errors = rp->getErrorPages();
                 std::string errorPath;
                 errorPath = "./defaultErrors/413.html";
                 if (errors.find(413) != errors.end())
-                    errorPath = rp.getRoot() + rp.getErrorPages().at(413);
+                    errorPath = rp->getRoot() + rp->getErrorPages().at(413);
                 std::ifstream errorFile(errorPath);
                 std::string errorContent;
                 if (!errorFile.is_open())
@@ -183,17 +227,17 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
                         (std::istreambuf_iterator<char>()));
                 }
                 fileLen = errorContent.length();
-                toSend = rp.getVersion() + " 413 Payload Too Large\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                toSend = rp->getVersion() + " 413 Payload Too Large\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
                 return ;
             }
-            DIR *dir = opendir(rp.getUploadPath().c_str());
+            DIR *dir = opendir(rp->getUploadPath().c_str());
             if (!dir)
             {
-                std::map<int, std::string> errors = rp.getErrorPages();
+                std::map<int, std::string> errors = rp->getErrorPages();
                 std::string errorPath;
                 errorPath = "./defaultErrors/500.html";
                 if (errors.find(500) != errors.end())
-                    errorPath = rp.getRoot() + rp.getErrorPages().at(500);
+                    errorPath = rp->getRoot() + rp->getErrorPages().at(500);
                 std::ifstream errorFile(errorPath);
                 std::string errorContent;
                 if (!errorFile.is_open())
@@ -209,7 +253,7 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
                         (std::istreambuf_iterator<char>()));
                 }
                 fileLen = errorContent.length();
-                toSend = rp.getVersion() + " 500 Internal Server Error\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                toSend = rp->getVersion() + " 500 Internal Server Error\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
                 closedir(dir);
                 return ;
             }
@@ -217,16 +261,16 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
             {
                 std::string fullpath = getFullPath(rp);
                 if (fullpath == "")
-                    fullpath = rp.getUploadPath() + rp.getPath();
+                    fullpath = rp->getUploadPath() + rp->getPath();
                 std::ifstream file;
                 file.open(fullpath.c_str());
                 if (file.is_open())
                 {
-                    std::map<int, std::string> errors = rp.getErrorPages();
+                    std::map<int, std::string> errors = rp->getErrorPages();
                     std::string errorPath;
                     errorPath = "./defaultErrors/409.html";
                     if (errors.find(409) != errors.end())
-                        errorPath = rp.getRoot() + rp.getErrorPages().at(409);
+                        errorPath = rp->getRoot() + rp->getErrorPages().at(409);
                     std::ifstream errorFile(errorPath);
                     std::string errorContent;
                     if (!errorFile.is_open())
@@ -242,7 +286,7 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
                             (std::istreambuf_iterator<char>()));
                     }
                     fileLen = errorContent.length();
-                    toSend = rp.getVersion() + " 409 Conflict\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                    toSend = rp->getVersion() + " 409 Conflict\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
                     closedir(dir);
                     return ;
                 }
@@ -251,11 +295,11 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
                     std::ofstream outputFile(fullpath.c_str(), std::ios::binary);
                     if (!outputFile.is_open())
                     {
-                        std::map<int, std::string> errors = rp.getErrorPages();
+                        std::map<int, std::string> errors = rp->getErrorPages();
                         std::string errorPath;
                         errorPath = "./defaultErrors/500.html";
                         if (errors.find(500) != errors.end())
-                            errorPath = rp.getRoot() + rp.getErrorPages().at(500);
+                            errorPath = rp->getRoot() + rp->getErrorPages().at(500);
                         std::ifstream errorFile(errorPath);
                         std::string errorContent;
                         if (!errorFile.is_open())
@@ -271,15 +315,15 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
                                 (std::istreambuf_iterator<char>()));
                         }
                         fileLen = errorContent.length();
-                        toSend = rp.getVersion() + " 500 Internal Server Error\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                        toSend = rp->getVersion() + " 500 Internal Server Error\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
                         closedir(dir);
                         return ;
                     }
                     else
                     {
-                        outputFile.write(rp.getBody().c_str(), rp.getBody().length());
+                        outputFile.write(rp->getBody().c_str(), rp->getBody().length());
                         outputFile.close();
-                        toSend = rp.getVersion() + " 201 Created\r\nLocation: ";
+                        toSend = rp->getVersion() + " 201 Created\r\nLocation: ";
                         toSend += fullpath;
                         toSend += "\r\nContent-Length: 0\r\n\r\n";
                         closedir(dir);
@@ -292,18 +336,18 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
         DIR *dir = opendir(localPath.c_str());
         if (dir)
         {
-            if (rp.getAutoIndex())
+            if (getAutoIndex())
             {
                 struct dirent *entry;
                 std::string html = "<html><body>";
-                html += "<h1>Index of " + rp.getPath() + "</h1><ul>";
+                html += "<h1>Index of " + rp->getPath() + "</h1><ul>";
                 while ((entry = readdir(dir)) != NULL)
                 {
                     std::string name = entry->d_name;
                     if (name == "." || name == "..")
                     continue ;
                     html += "<li><a href=\"";
-                    html += rp.getPath();
+                    html += rp->getPath();
                     html += "/";
                     html += name;
                     html += "\">";
@@ -312,25 +356,25 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
                 }
                 html += "</ul></body></html>";
                 fileLen = html.length();
-                toSend = rp.getVersion() + " 200 OK\r\nContent-Type: text/html\r\nContent-Length: "
+                toSend = rp->getVersion() + " 200 OK\r\nContent-Type: text/html\r\nContent-Length: "
                 + std::to_string(fileLen) + "\r\n\r\n" + html;
                 closedir(dir);
                 return ;
             }
-            else if (!rp.getAutoIndex())
+            else if (!getAutoIndex())
             {
-                std::map<int, std::string> errors = rp.getErrorPages();
+                std::map<int, std::string> errors = rp->getErrorPages();
                 std::string errorPath;
                 errorPath = "./defaultErrors/403.html";
                 if (errors.find(403) != errors.end())
-                errorPath = rp.getRoot() + rp.getErrorPages().at(403);
+                errorPath = rp->getRoot() + rp->getErrorPages().at(403);
                 std::ifstream errorFile(errorPath);
                 if (errorFile.is_open())
                 {
                     std::string errorContent((std::istreambuf_iterator<char>(errorFile)),
                     (std::istreambuf_iterator<char>()));
                     fileLen = errorContent.length();
-                    toSend = rp.getVersion() + " 403 Forbidden\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+                    toSend = rp->getVersion() + " 403 Forbidden\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
                     closedir(dir);
                     return ;
                 }
@@ -340,11 +384,11 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
         file.open(localPath);
         if (!file.is_open())
         {
-            std::map<int, std::string> errors = rp.getErrorPages();
+            std::map<int, std::string> errors = rp->getErrorPages();
             std::string errorPath;
             errorPath = "./defaultErrors/404.html";
             if (errors.find(404) != errors.end())
-                errorPath = rp.getRoot() + rp.getErrorPages().at(404);
+                errorPath = rp->getRoot() + rp->getErrorPages().at(404);
             std::ifstream errorFile(errorPath);
             std::string errorContent;
             if (!errorFile.is_open())
@@ -360,23 +404,24 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
                     (std::istreambuf_iterator<char>()));
             }
             fileLen = errorContent.length();
-            toSend = rp.getVersion() + " 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+            toSend = rp->getVersion() + " 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
             return ;
         }
         std::string fileContent((std::istreambuf_iterator<char>(file)),
             (std::istreambuf_iterator<char>()));
         fileLen = fileContent.length();
         std::string fileLength = std::to_string(fileLen);
-        rp.setType();
-        toSend = rp.getVersion() + " 200 OK\r\nContent-Type: " + rp.getContentType() + "\r\nContent-Length: " + fileLength + "\r\n\r\n" + fileContent;
+        rp->setType(localPath);
+        std::cout << rp->getContentType() << std::endl;
+        toSend = rp->getVersion() + " 200 OK\r\nContent-Type: " + rp->getContentType() + "\r\nContent-Length: " + fileLength + "\r\n\r\n" + fileContent;
     }
     else
     {
-        std::map<int, std::string> errors = rp.getErrorPages();
+        std::map<int, std::string> errors = rp->getErrorPages();
         std::string errorPath;
         errorPath = "./defaultErrors/405.html";
         if (errors.find(405) != errors.end())
-            errorPath = rp.getRoot() + rp.getErrorPages().at(405);
+            errorPath = rp->getRoot() + rp->getErrorPages().at(405);
         std::ifstream errorFile(errorPath);
         std::string errorContent;
         if (!errorFile.is_open())
@@ -392,58 +437,65 @@ ResponseBuilder::ResponseBuilder(RequestParser rp, ServerConfig &config, ClientI
                 (std::istreambuf_iterator<char>()));
         }
         fileLen = errorContent.length();
-        toSend = rp.getVersion() + " 405 Method Not Allowed\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
+        toSend = rp->getVersion() + " 405 Method Not Allowed\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(fileLen) + "\r\n\r\n" + errorContent;
         return ;
     }
 }
 
-char    **prepareEnv(RequestParser rp, ServerConfig &config, ClientInfo &client)
+char    **prepareEnv(RequestParser *rp, ServerConfig &config, ClientInfo &client, LocationConfig *location)
 {
     std::vector<std::string> keyValue;
     std::string combined;
-    combined = "REQUEST_METHOD=" + rp.getMethod();
+    combined = "REQUEST_METHOD=" + rp->getMethod();
     keyValue.push_back(combined);
-    combined = "SCRIPT_NAME=" + rp.getPath();
+    combined = "SCRIPT_NAME=" + rp->getPath();
     keyValue.push_back(combined);
-    combined = "PATH_INFO=" + rp.getExtraInfo();
+    combined = "PATH_INFO=" + rp->getExtraInfo();
     keyValue.push_back(combined);    
-    size_t pos = rp.getPath().find("?");
+    size_t pos = rp->getPath().find("?");
     if (pos == std::string::npos)
         combined = "QUERY_STRING=";
     else
-        combined = "QUERY_STRING=" + rp.getPath().substr(pos + 1);
+        combined = "QUERY_STRING=" + rp->getPath().substr(pos + 1);
+    std::cout << combined << std::endl;
     keyValue.push_back(combined);
-    combined = "CONTENT_LENGTH=" + std::to_string(rp.getBody().length());
+    combined = "CONTENT_LENGTH=" + std::to_string(rp->getBody().length());
     keyValue.push_back(combined);
-    combined = "SERVER_PORT=" + std::to_string(rp.getConfig().port);
+    combined = "SERVER_PORT=" + client.localPort;
     keyValue.push_back(combined);
-    combined = "SERVER_PROTOCOL=" + rp.getVersion();
+    combined = "SERVER_PROTOCOL=" + rp->getVersion();
     keyValue.push_back(combined);
     combined = "REMOTE_ADDR=" + client.remoteIp;
     keyValue.push_back(combined);
     combined = "REMOTE_PORT=" + client.remotePort;
     keyValue.push_back(combined);
-    combined = "DOCUMENT_ROOT=" + config.root;
+    if (location && !location->root.empty())
+        combined = "DOCUMENT_ROOT=" + location->root;
+    else
+        combined = "DOCUMENT_ROOT=" + config.root;
     keyValue.push_back(combined);
-    combined = "PATH_TRANSLATED=" + config.root + rp.getExtraInfo();
+    if (location && !location->root.empty())
+        combined = "PATH_TRANSLATED=" + location->root + rp->getExtraInfo();
+    else
+        combined = "PATH_TRANSLATED=" + config.root + rp->getExtraInfo();
     keyValue.push_back(combined);
-    combined = "REQUEST_URI=" + rp.getFullPath();
+    combined = "REQUEST_URI=" + rp->getFullPath();
     keyValue.push_back(combined);
     combined = "GATEWAY_INTERFACE=CGI/1.1";
     keyValue.push_back(combined);
     combined = "SERVER_SOFTWARE=serverMli7";
     keyValue.push_back(combined);
-    if (!rp.getConfig().serverName.empty())
-        combined = "SERVER_NAME=" + rp.getConfig().serverName;
+    if (!rp->getConfig()->serverName.empty())
+        combined = "SERVER_NAME=" + rp->getConfig()->serverName;
     else
-        combined = "SERVER_NAME=" + rp.getServerName();
+        combined = "SERVER_NAME=" + rp->getServerName();
     keyValue.push_back(combined);
-    combined = "CONTENT_TYPE=" + rp.getCt();
+    combined = "CONTENT_TYPE=" + rp->getCt();
     keyValue.push_back(combined);
-    pos = rp.getHeaders().find("\r\n");
+    pos = rp->getHeaders().find("\r\n");
     if (pos == std::string::npos)
         return NULL;
-    std::string headers = rp.getHeaders().substr(pos + 2);
+    std::string headers = rp->getHeaders().substr(pos + 2);
     std::string headerName;
     size_t pos2;
     size_t pos3;
@@ -520,14 +572,14 @@ void    cleanup(char **env, int *readFds, int *writeFds)
     }
 }
 
-int    ResponseBuilder::runCgi(RequestParser rp, ServerConfig &config, ClientInfo &client)
+int    ResponseBuilder::runCgi(RequestParser *rp, ServerConfig &config, ClientInfo &client, LocationConfig *location)
 {
     std::string localPath;
-    std::string path = rp.getPath();
+    std::string path = rp->getPath();
     if (path[0] == '/')
-        localPath = rp.getRoot() + path;
+        localPath = rp->getRoot() + path;
     else
-        localPath = rp.getRoot() + "/" + path;
+        localPath = rp->getRoot() + "/" + path;
     struct stat sfile;
     if (stat(localPath.c_str(), &sfile) != 0)
         return (404);
@@ -537,7 +589,7 @@ int    ResponseBuilder::runCgi(RequestParser rp, ServerConfig &config, ClientInf
     int writefds[2];
     if (pipe(readfds) == -1 || pipe(writefds) == -1)
         return (500);
-    char **env = prepareEnv(rp, config, client);
+    char **env = prepareEnv(rp, config, client, location);
     pid_t pid = fork();
     if (pid == 0)
     {
@@ -561,11 +613,15 @@ int    ResponseBuilder::runCgi(RequestParser rp, ServerConfig &config, ClientInf
     {
         close(writefds[0]);
         close(readfds[1]);
-        if (rp.getBody().length() > 0)
+        if (rp->getBody().length() > 0)
         {
-            write(writefds[1], rp.getBody().c_str(), rp.getBody().length());
-            close(writefds[1]);
+            int bytes = 0;
+            while (bytes < rp->getBody().length())
+            {
+                bytes += write(writefds[1], rp->getBody().c_str() + bytes, rp->getBody().length() - bytes);
+            }
         }
+        close(writefds[1]);
         std::string cgiOutput;
         char buffer[5000];
         size_t bytesRead;
@@ -591,7 +647,7 @@ int    ResponseBuilder::runCgi(RequestParser rp, ServerConfig &config, ClientInf
             return (500);
         cgiHeaders = cgiOutput.substr(0, pos);
         cgiBody = cgiOutput.substr(pos + 4);
-        toSend = rp.getVersion() + " 200 OK\r\n" + cgiHeaders + "\r\nContent-Length: " + std::to_string(cgiBody.length()) + "\r\n\r\n" + cgiBody;
+        toSend = rp->getVersion() + " 200 OK\r\n" + cgiHeaders + "\r\nContent-Length: " + std::to_string(cgiBody.length()) + "\r\n\r\n" + cgiBody;
         return (0);
     }
     else
@@ -601,12 +657,12 @@ int    ResponseBuilder::runCgi(RequestParser rp, ServerConfig &config, ClientInf
     }
 }
 
-std::string ResponseBuilder::getFullPath(RequestParser rp)
+std::string ResponseBuilder::getFullPath(RequestParser *rp)
 {
-    size_t pos = rp.getHeaders().find("Content-Disposition");
+    size_t pos = rp->getHeaders().find("Content-Disposition");
     if (pos == std::string::npos)
         return "";
-    std::string line = rp.getHeaders().substr(pos);
+    std::string line = rp->getHeaders().substr(pos);
     pos = line.find("\n");
     if (pos == std::string::npos)
         return "";
@@ -620,7 +676,7 @@ std::string ResponseBuilder::getFullPath(RequestParser rp)
     if (pos == std::string::npos)
         return "";
     filename = filename.substr(0, pos);
-    std::string fullpath = rp.getUploadPath() + filename;
+    std::string fullpath = rp->getUploadPath() + filename;
     return fullpath;
 }
 
@@ -632,4 +688,50 @@ const std::string &ResponseBuilder::getToSend() const
 const cgiData *ResponseBuilder::getCgi() const
 {
     return cgi;
+}
+
+std::string ResponseBuilder::getRoot() const
+{
+    if (location && !location->root.empty())
+    {
+        return location->root;
+    }
+    return rp->getRoot();
+}
+
+bool ResponseBuilder::getAutoIndex() const
+{
+    if (location)
+        return location->autoindex;
+    return rp->getAutoIndex();
+}
+
+std::string ResponseBuilder::getIndex() const
+{
+    if (location && !location->index.empty())
+    {
+        return location->index;
+    }
+    return rp->getIndex();
+}
+
+std::string ResponseBuilder::getPath() const
+{
+    if (location != nullptr)
+    {
+        std::string configIndex = "/" + rp->getConfig()->index;
+        if (configIndex.compare(rp->getPath().c_str()) == 0)
+        {
+            return "/" + location->index;
+        }
+        int pos = rp->getPath().find(location->path);
+        if (pos == std::string::npos)
+            return rp->getPath();
+        std::string value = rp->getPath().substr(pos + location->path.length());
+        std::cout << value << std::endl;
+        if (value.empty() && !location->index.empty())
+            return "/" + location->index;
+        return value;
+    }
+    return rp->getPath();
 }

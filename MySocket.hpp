@@ -21,6 +21,7 @@ private:
     struct sockaddr_in adress;
     int sock;
 public:
+    MySocket();
     MySocket(int domain, int service, int protocol, int port, u_long interface);
     void    testConnection(int item);
     const struct sockaddr_in &getAdress() const;

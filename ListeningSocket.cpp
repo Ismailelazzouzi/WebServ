@@ -1,5 +1,7 @@
 #include "ListeningSocket.hpp"
 
+ListeningSocket::ListeningSocket(){}
+
 ListeningSocket::ListeningSocket(int domain, int service, int protocol, int port,
     u_long interface, int bklg) : MySocket(domain, service, protocol, port, interface), backLog(bklg)
 {

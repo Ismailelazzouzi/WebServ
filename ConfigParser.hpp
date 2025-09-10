@@ -18,7 +18,7 @@ struct LocationConfig
 
 struct ServerConfig
 {
-    int port;
+    std::vector<int> ports;
     std::vector<LocationConfig>locations;
     std::string serverName;
     std::string root;

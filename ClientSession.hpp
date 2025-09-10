@@ -12,6 +12,7 @@ struct ClientInfo {
     std::string responseBuffer;
     std::string remotePort;
     std::string remoteIp;
+    std::string localPort;
     RequestParser rp;
     ResponseBuilder rb;
     size_t byteSent;
@@ -22,17 +23,16 @@ class ClientSession
 private:
     std::vector <int> listenFds;
     std::vector<pollfd> fds;
+    std::map<int, const ServerConfig*> configByFd;
     RequestParser rp;
-    std::vector<ListeningSocket> lss;
+    std::map<int ,ListeningSocket> lss;
     ConfigParser cp;
     
 public:
-    ClientSession(ConfigParser cp);
+    ClientSession(ConfigParser &cp);
     ~ClientSession();
     void    run();
     RequestParser getRp();
-    int currentClientPos(const std::vector<ClientInfo> &clients, int clientFd);
 };
-
 
 #endif

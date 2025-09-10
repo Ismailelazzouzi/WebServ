@@ -8,6 +8,7 @@ class ListeningSocket : public MySocket
 private:
     int backLog;
 public:
+    ListeningSocket();
     ListeningSocket(int domain, int service, int protocol, int port, u_long interface,
         int bklg);
     int BindSocket();

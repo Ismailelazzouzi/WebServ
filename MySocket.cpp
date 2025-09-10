@@ -1,5 +1,8 @@
 #include "MySocket.hpp"
 
+MySocket::MySocket()
+{}
+
 MySocket::MySocket(int domain, int service, int protocol, int port, u_long interface)
 {
     adress.sin_family = domain;
