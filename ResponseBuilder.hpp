@@ -22,7 +22,7 @@ private:
 public:
     ResponseBuilder();
     ResponseBuilder(RequestParser *rp, ServerConfig &config, ClientInfo &client, LocationConfig *location);
-    const std::string &getToSend() const;
+    const std::string getToSend() const;
     std::string getFullPath(RequestParser *rp);
     int runCgi(RequestParser *rp, ServerConfig &config, ClientInfo &client, LocationConfig *location);
     const cgiData *getCgi() const;

@@ -9,13 +9,19 @@ ResponseBuilder::ResponseBuilder(RequestParser *rp, ServerConfig &config, Client
     if (rp->getMethod() == "GET" || rp->getMethod() == "DELETE" || rp->getMethod() == "POST")
     {
         std::string localPath;
-        localPath = getRoot() + getPath();
-        if (getRoot()[getRoot().length() - 1] != '/' && getPath()[0] != '/')
-            localPath = getRoot() + "/" + getPath();
-        std::string path = rp->getPath();
-        int signal = 1;
-        DIR *dir = opendir(localPath.c_str());
-        if (dir && localPath[localPath.length() -1] != '/')
+        std::string root = getRoot();
+        std::string path = getPath();
+        size_t signal = 1;
+        size_t qPos = path.find('?');
+        
+        if (qPos != std::string::npos)
+            path = path.substr(0, qPos);
+        if (root.back() != '/' && path.front() != '/')
+            localPath = root + "/" + path;
+        else
+            localPath = root + path;
+        DIR *dir1 = opendir(localPath.c_str());
+        if (dir1 && localPath[localPath.length() -1] != '/')
         {
             toSend = rp->getVersion() + " 301 Moved Permenantly\r\n" + "Location: " + rp->getFullPath()  + "/" + "\r\nContent-Length: 0" + "\r\n\r\n";
             return ;
@@ -28,9 +34,10 @@ ResponseBuilder::ResponseBuilder(RequestParser *rp, ServerConfig &config, Client
                 signal = 405;
         }
         rp->setType(localPath);
-        if (signal == 1 && rp->getContentType() == "cgi" && rp->getMethod() == "GET")
+        if (signal == 1 && rp->getContentType() == "cgi" && !location->cgiExt.empty())
         {
             signal = runCgi(rp, config, client, location);
+            return ;
         }
         else if (signal == 0)
             return ;
@@ -146,6 +153,8 @@ ResponseBuilder::ResponseBuilder(RequestParser *rp, ServerConfig &config, Client
         }
         if (rp->getMethod() == "DELETE")
         {
+            if (location)
+                localPath = location->root + getPath();
             if (std::remove(localPath.c_str()) == 0)
             {
                 toSend = rp->getVersion() + " 204 No Content\r\n\r\n";
@@ -260,8 +269,10 @@ ResponseBuilder::ResponseBuilder(RequestParser *rp, ServerConfig &config, Client
             else
             {
                 std::string fullpath = getFullPath(rp);
-                if (fullpath == "")
+                if (fullpath == "" && rp->getUploadName().empty())
                     fullpath = rp->getUploadPath() + rp->getPath();
+                else if (fullpath == "" && !rp->getUploadName().empty())
+                    fullpath = rp->getUploadPath() + "/" + rp->getUploadName();
                 std::ifstream file;
                 file.open(fullpath.c_str());
                 if (file.is_open())
@@ -412,7 +423,6 @@ ResponseBuilder::ResponseBuilder(RequestParser *rp, ServerConfig &config, Client
         fileLen = fileContent.length();
         std::string fileLength = std::to_string(fileLen);
         rp->setType(localPath);
-        std::cout << rp->getContentType() << std::endl;
         toSend = rp->getVersion() + " 200 OK\r\nContent-Type: " + rp->getContentType() + "\r\nContent-Length: " + fileLength + "\r\n\r\n" + fileContent;
     }
     else
@@ -457,7 +467,6 @@ char    **prepareEnv(RequestParser *rp, ServerConfig &config, ClientInfo &client
         combined = "QUERY_STRING=";
     else
         combined = "QUERY_STRING=" + rp->getPath().substr(pos + 1);
-    std::cout << combined << std::endl;
     keyValue.push_back(combined);
     combined = "CONTENT_LENGTH=" + std::to_string(rp->getBody().length());
     keyValue.push_back(combined);
@@ -575,7 +584,16 @@ void    cleanup(char **env, int *readFds, int *writeFds)
 int    ResponseBuilder::runCgi(RequestParser *rp, ServerConfig &config, ClientInfo &client, LocationConfig *location)
 {
     std::string localPath;
-    std::string path = rp->getPath();
+    std::string root = getRoot();
+    std::string path = rp->getFullPath();
+    size_t signal = 1;
+    size_t qPos = path.find('?');
+    if (qPos != std::string::npos)
+        path = path.substr(0, qPos);
+    if (root.back() != '/' && path.front() != '/')
+        localPath = root + "/" + path;
+    else
+        localPath = root + path;
     if (path[0] == '/')
         localPath = rp->getRoot() + path;
     else
@@ -601,8 +619,8 @@ int    ResponseBuilder::runCgi(RequestParser *rp, ServerConfig &config, ClientIn
         close(readfds[1]);
         char *str = new char[localPath.length() + 1];
         std::strcpy(str, localPath.c_str());
-        char* const argv[] = {str, NULL};
-        if (execve(localPath.c_str(), argv, env) == -1)
+        char* const argv[] = {const_cast<char*>("python3"), str, NULL};
+        if (execve("/usr/bin/python3", argv, env) == -1)
         {
             perror("EXECVE FAILED !");
             delete[] str;
@@ -610,46 +628,39 @@ int    ResponseBuilder::runCgi(RequestParser *rp, ServerConfig &config, ClientIn
         }
     }
     if (pid > 0)
+{
+    close(writefds[0]);
+    close(readfds[1]);
+    if (rp->getBody().length() > 0)
     {
-        close(writefds[0]);
-        close(readfds[1]);
-        if (rp->getBody().length() > 0)
+        int bytes = 0;
+        while (bytes < rp->getBody().length())
         {
-            int bytes = 0;
-            while (bytes < rp->getBody().length())
-            {
-                bytes += write(writefds[1], rp->getBody().c_str() + bytes, rp->getBody().length() - bytes);
-            }
+            bytes += write(writefds[1], rp->getBody().c_str() + bytes, rp->getBody().length() - bytes);
         }
-        close(writefds[1]);
-        std::string cgiOutput;
-        char buffer[5000];
-        size_t bytesRead;
-        while ((bytesRead = read(readfds[0], buffer, sizeof(buffer))) > 0)
-        {
-            cgiOutput.append(buffer, bytesRead);
-        }
-        if (bytesRead == -1)
-        {
-            perror("ERROR reading from cgi pipeline");
-            cleanup(env, NULL, NULL);
-            close(readfds[0]);
-            return (500);
-        }
-        close(readfds[0]);
-        int status;
-        waitpid(pid, &status, 0);
-        cleanup(env, NULL, NULL);
-        std::string cgiHeaders;
-        std::string cgiBody;
-        size_t pos = cgiOutput.find("\r\n\r\n");
-        if (pos == std::string::npos)
-            return (500);
-        cgiHeaders = cgiOutput.substr(0, pos);
-        cgiBody = cgiOutput.substr(pos + 4);
-        toSend = rp->getVersion() + " 200 OK\r\n" + cgiHeaders + "\r\nContent-Length: " + std::to_string(cgiBody.length()) + "\r\n\r\n" + cgiBody;
-        return (0);
     }
+    close(writefds[1]);
+    std::string cgiOutput;
+    char buffer[5000];
+    size_t bytesRead;
+    while ((bytesRead = read(readfds[0], buffer, sizeof(buffer))) > 0)
+    {
+        cgiOutput.append(buffer, bytesRead);
+    }
+    if (bytesRead == -1)
+    {
+        perror("ERROR reading from cgi pipeline");
+        cleanup(env, NULL, NULL);
+        close(readfds[0]);
+        return (500);
+    }
+    close(readfds[0]);
+    int status;
+    waitpid(pid, &status, 0);
+    cleanup(env, NULL, NULL);
+    toSend = rp->getVersion() + " 200 OK\r\n" + cgiOutput;
+    return (0);
+}
     else
     {
         cleanup(env, readfds, writefds);;
@@ -680,7 +691,7 @@ std::string ResponseBuilder::getFullPath(RequestParser *rp)
     return fullpath;
 }
 
-const std::string &ResponseBuilder::getToSend() const
+const std::string ResponseBuilder::getToSend() const
 {
     return toSend;
 }
@@ -728,7 +739,6 @@ std::string ResponseBuilder::getPath() const
         if (pos == std::string::npos)
             return rp->getPath();
         std::string value = rp->getPath().substr(pos + location->path.length());
-        std::cout << value << std::endl;
         if (value.empty() && !location->index.empty())
             return "/" + location->index;
         return value;

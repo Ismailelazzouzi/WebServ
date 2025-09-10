@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Webserv Project Showcase</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="container">
+<header>
+<h1>My Webserv Project</h1>
+<p>A C++ HTTP server built from scratch.</p>
+</header>
+
+    <section class="card">
+        <h2>About the Project</h2>
+        <p>This webserv project is a fully functional HTTP server built in C++. It adheres to the fundamental principles of the HTTP/1.1 protocol and is designed to handle static file serving, CGI scripts, and various HTTP methods.</p>
+        <h3>Key Technologies</h3>
+        <ul>
+            <li><strong>C++:</strong> The core language for performance.</li>
+            <li><strong>HTTP/1.1:</strong> The protocol that makes the web work.</li>
+            <li><strong>TCP/IP Sockets:</strong> The backbone for all network communication.</li>
+            <li><strong>Config Parsing:</strong> A custom parser for a `.conf` file to configure servers and locations.</li>
+        </ul>
+    </section>
+
+    <section class="card">
+        <h2>Feature Showcase &amp; Tests</h2>
+
+        <h3>Static File Serving</h3>
+        <p>Your server should be able to serve static files like this one. Feel free to add more links to test serving different file types.</p>
+        <p><a href="/css/style.css">View the CSS File</a></p>
+
+        <h3>Redirection Test</h3>
+        <p>Clicking this link will test your server's 301 redirection capability. You should be redirected to the home page.</p>
+        <p><a href="/old-page">Go to an old page</a></p>
+
+        <h3>Autoindex Test</h3>
+        <p>This link should display a list of files in the `/images` directory, as the `autoindex` feature is turned on in the config file.</p>
+        <p><a href="/images/">Browse the images directory</a></p>
+
+        <h3>CGI Test</h3>
+        <p>These forms will pass data to a CGI script. This script will execute on your server. It will display the environment variables and the request body to test your CGI implementation.</p>
+
+        <h4>GET Test</h4>
+        <p>Pass some data in the URL to the CGI script. The script should display it.</p>
+        <form action="/cgi-bin/info.py" method="GET">
+            <input type="text" name="name" placeholder="Enter your name" required>
+            <button type="submit">Run GET Test</button>
+        </form>
+
+        <h4>POST Test</h4>
+        <p>The script should display your message from the request body.</p>
+        <form action="/cgi-bin/info.py" method="POST">
+            <textarea name="message" rows="5" placeholder="Enter your message" required></textarea>
+            <button type="submit">Run POST Test</button>
+        </form>
+
+        <p><strong>Note:</strong> Your `client_max_body_size` is set to 1M. Trying to send a larger file or message will result in a `413 Request Entity Too Large` error.</p>
+    </section>
+
+    <section class="card">
+        <h2>File Upload Test</h2>
+        <p>Test your file upload feature. Files will be uploaded to the `uploads` directory.</p>
+        <form action="/uploads" method="POST" enctype="multipart/form-data">
+            <input type="file" name="fileToUpload" id="fileToUpload" required>
+            <button type="submit">Upload File</button>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>File Deletion Test</h2>
+        <p>Enter the name of a file to delete from your `uploads` directory. This uses a `DELETE` HTTP request.</p>
+        <form id="deleteForm">
+            <input type="text" id="filename" name="filename" placeholder="e.g., file.txt" required>
+            <button type="submit" id="deleteButton">Delete File</button>
+        </form>
+    </section>
+
+    <footer>
+        <p>&copy; 2024 Webserv Project. All rights reserved.</p>
+    </footer>
+</div>
+<script>
+    document.getElementById('deleteForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const filename = document.getElementById('filename').value;
+        if (!filename) {
+            alert('Please enter a filename.');
+            return;
+        }
+
+        const url = '/uploads/' + filename;
+        fetch(url, {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (response.status === 204) {
+                alert('File ' + filename + ' deleted successfully.');
+            } else if (response.status === 404) {
+                alert('File ' + filename + ' not found.');
+            } else if (response.status === 405) {
+                alert('Method Not Allowed. Check your webserv.conf file.');
+            } else {
+                alert('An error occurred during deletion. Status: ' + response.status);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Network error. Could not connect to the server.');
+        });
+    });
+</script>
+</body>
+</html>

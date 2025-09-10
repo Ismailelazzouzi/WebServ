@@ -56,6 +56,20 @@ RequestParser::RequestParser(std::string &buffer, ServerConfig *config) : config
         pos = ct.find("\r\n");
         ct = ct.substr(0, pos);
     }
+    if (method == "POST")
+    {
+        size_t pos = ct.find("boundary=");
+        if (pos != std::string::npos)
+        {
+            std::string boundary = ct.substr(pos + 9);
+            std::string uploadData = requestBody.substr(requestBody.find(boundary) + boundary.length());
+            uploadData = uploadData.substr(0, uploadData.find("\r\n\r\n"));
+            uploadName = uploadData.substr(uploadData.find("filename=\"") + 10);
+            uploadName = uploadName.substr(0, uploadName.find("\""));
+            std::string uploadBody = requestBody.substr(requestBody.find(uploadData) + uploadData.length() + 4);
+            requestBody = uploadBody.substr(0, uploadBody.find("--" + boundary));
+        }
+    }
     pos = fullpath.find(".");
     if (pos != std::string::npos)
         extraInfo = fullpath.substr(pos);
@@ -160,6 +174,16 @@ const std::string &RequestParser::getUploadPath() const
     return config->uploadPath;
 }
 
+const std::string &RequestParser::getFullRequest() const
+{
+    return fullRequest;
+}
+
+const std::string &RequestParser::getUploadName() const
+{
+    return uploadName;
+}
+
 int RequestParser::getMaxClientBody() const
 {
     return config->maxClientBody;
@@ -168,7 +192,6 @@ int RequestParser::getMaxClientBody() const
 void    RequestParser::setType(std::string &path)
 {
     int i = path.length() - 1;
-    std::cout << path << std::endl;
     while (i > 0)
     {
         if (path[i] == '.')
@@ -198,12 +221,14 @@ void    RequestParser::setType(std::string &path)
         contentType = "text/css";
     else if (type == "json")
         contentType = "application/json";
+    else if (type == "jpeg" || type == "jpg")
+        contentType = "image/jpeg";
     else if (type == "png")
         contentType = "image/png";
-    else if (type == "jpg")
-        contentType = "image/jpeg";
-    else if (type == "php" || type == "cgi" || type == "py")
-        contentType = "cgi";
+    else if (type == "gif")
+        contentType = "image/gif";
+    else if (type == "py")
+        contentType = "cgi"; // This is the new, critical line
     else
         contentType = "text/plain";
 }

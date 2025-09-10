@@ -18,7 +18,9 @@ private:
     std::string contentType;
     std::string serverName;
     std::string ct;
+    std::string uploadName;
     LocationConfig *location;
+    size_t         requestLength;
 public:
     RequestParser();
     RequestParser(std::string &buffer, ServerConfig *config);
@@ -35,6 +37,8 @@ public:
     const std::string &getUploadPath() const;
     const std::string &getBody() const;
     const std::string &getHeaders() const;
+    const std::string &getFullRequest() const;
+    const std::string &getUploadName() const;
     const bool getAutoIndex() const;
     std::map<int, std::string> getErrorPages();
     const std::string &getRoot() const;

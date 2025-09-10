@@ -30,31 +30,37 @@ bool    fullRequest(std::string &request)
         return false;
     std::string headers = request.substr(0, endOfHeaders);
     std::string body = request.substr(endOfHeaders + 4);
-    if (headers.substr(0, headers.find("\n")).find("GET") != std::string::npos)
+
+    std::string firstLine = headers.substr(0, headers.find("\n"));
+    if (firstLine.find("GET") != std::string::npos || firstLine.find("DELETE") != std::string::npos)
         return true;
-    else if (headers.find("Transfer-Encoding: chunked") != std::string::npos 
-        && body.find("0\r\n\r\n") == std::string::npos)
-        return false;
-    else if (headers.find("Transfer-Encoding: chunked") != std::string::npos 
-        && body.find("0\r\n\r\n") != std::string::npos)
-        return true;
-    else if (headers.find("Content-Length") != std::string::npos)
+    else if (firstLine.find("POST") != std::string::npos)
     {
-        std::string contentLen = headers.substr(headers.find("Content-Length:") + 15);
-        contentLen = contentLen.substr(0, contentLen.find("\r\n"));
-        size_t cntLen = std::stol(contentLen);
-        if (body.size() < cntLen)
-            return false;
-        return true;
+        if (headers.find("Content-Length:") != std::string::npos)
+        {
+            size_t pos = headers.find("Content-Length:") + 15;
+            std::string lenStr = headers.substr(pos, headers.find("\r\n", pos) - pos);
+            try {
+                size_t cntLen = std::stoul(lenStr);
+                if (body.size() >= cntLen)
+                    return true;
+            } catch (const std::exception& e) {
+                return false;
+            }
+        }
+        else if (headers.find("Transfer-Encoding: chunked") != std::string::npos)
+        {
+            if (body.find("0\r\n\r\n") != std::string::npos)
+                return true;
+        }
     }
-    return true;
+    return false;
 }
 
 LocationConfig *findLocationConfig(ServerConfig *config, const std::string &uri)
 {
     LocationConfig *bestMatch = nullptr;
     size_t maxLen = 0;
-    
     for (size_t i = 0; i < config->locations.size(); i++)
     {
         if (uri.rfind(config->locations[i].path, 0) == 0)
