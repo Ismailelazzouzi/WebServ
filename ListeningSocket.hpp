@@ -9,7 +9,7 @@ private:
     int backLog;
 public:
     ListeningSocket();
-    ListeningSocket(int domain, int service, int protocol, int port, u_long interface,
+    ListeningSocket(int domain, int service, int protocol, int port, std::string interface,
         int bklg);
     int BindSocket();
     int StartListening();

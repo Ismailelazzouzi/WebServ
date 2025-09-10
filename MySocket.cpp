@@ -3,12 +3,15 @@
 MySocket::MySocket()
 {}
 
-MySocket::MySocket(int domain, int service, int protocol, int port, u_long interface)
+MySocket::MySocket(int domain, int service, int protocol, int port, std::string interface)
 {
     adress.sin_family = domain;
     adress.sin_port = htons(port);
-    adress.sin_addr.s_addr = htonl(interface);
+    adress.sin_addr.s_addr = inet_addr(interface.c_str());
     sock = socket(domain, service, protocol);
+    fcntl(sock, F_SETFL, O_NONBLOCK);
+    int opt = 1;
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     testConnection(sock);
 }
 void    MySocket::testConnection(int item)

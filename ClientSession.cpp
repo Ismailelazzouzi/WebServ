@@ -11,7 +11,7 @@ ClientSession::ClientSession(ConfigParser &cp) : cp(cp)
         ListeningSocket ls;
         for (size_t j = 0; j < cp.getServers()[i].ports.size(); j++)
         {
-            ls = ListeningSocket(AF_INET, SOCK_STREAM, 0, cp.getServers()[i].ports[j], INADDR_ANY, 10);
+            ls = ListeningSocket(AF_INET, SOCK_STREAM, 0, cp.getServers()[i].ports[j], cp.getServers()[i].hostname, 10);
             lss[ls.getSock()] = ls;
             listenFd = ls.getSock();
             serverPoll.fd = listenFd;

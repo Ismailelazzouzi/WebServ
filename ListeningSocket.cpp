@@ -3,13 +3,14 @@
 ListeningSocket::ListeningSocket(){}
 
 ListeningSocket::ListeningSocket(int domain, int service, int protocol, int port,
-    u_long interface, int bklg) : MySocket(domain, service, protocol, port, interface), backLog(bklg)
+    std::string interface, int bklg) : MySocket(domain, service, protocol, port, interface), backLog(bklg)
 {
     testConnection(BindSocket());
     testConnection(StartListening());
 }
 int ListeningSocket::BindSocket()
 {
+    
     return bind(getSock(), (struct sockaddr *)&getAdress(), sizeof(getAdress()));
 }
 

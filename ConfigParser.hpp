@@ -25,6 +25,7 @@ struct ServerConfig
     std::string index;
     std::string clientIp;
     std::string clientPort;
+    std::string hostname;
     std::map<int, std::string> errorPages;
     bool autoindex;
     size_t  maxClientBody;

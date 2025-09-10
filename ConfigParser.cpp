@@ -95,7 +95,7 @@ void    ConfigParser::parse(const std::string &filepath)
             if (directive == "listen" || directive == "root" || directive == "return" || directive == "location"
                     || directive == "index" || directive == "autoindex" || directive == "server_name"
                     || directive == "error_page" || directive == "upload_location"
-                    || directive == "client_max_body_size" || directive == "methods" || directive == "cgi_ext")
+                    || directive == "client_max_body_size" || directive == "methods" || directive == "hostname" || directive == "cgi_ext")
             {
                 std::string value = trim(line.substr(line.find(' ') + 1));
                 if (!value.empty() && value.back() == ';')
@@ -142,6 +142,10 @@ void    ConfigParser::parse(const std::string &filepath)
                         current.uploadPath = current.root + value;
                     else
                         currentLoc.uploadLoc = value;
+                }
+                else if (directive == "hostname")
+                {
+                    current.hostname = value;
                 }
                 else if (directive == "autoindex")
                 {

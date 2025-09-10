@@ -14,6 +14,9 @@
 #include <poll.h> 
 #include <cctype>
 #include <errno.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
+
 
 class MySocket
 {
@@ -22,7 +25,7 @@ private:
     int sock;
 public:
     MySocket();
-    MySocket(int domain, int service, int protocol, int port, u_long interface);
+    MySocket(int domain, int service, int protocol, int port, std::string interface);
     void    testConnection(int item);
     const struct sockaddr_in &getAdress() const;
     int getSock() const;
