@@ -171,6 +171,17 @@ const std::string &RequestParser::getRoot() const
 
 const std::string &RequestParser::getUploadPath() const
 {
+    const std::string &path = config->uploadPath;
+    struct stat st;
+    if (stat(path.c_str(), &st) != 0)
+    {
+        mkdir(path.c_str(), 0755);
+    }
+    else if (!S_ISDIR(st.st_mode))
+    {
+        unlink(path.c_str());
+        mkdir(path.c_str(), 0755);
+    }
     return config->uploadPath;
 }
 
