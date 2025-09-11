@@ -334,7 +334,7 @@ ResponseBuilder::ResponseBuilder(RequestParser *rp, ServerConfig &config, Client
                     {
                         outputFile.write(rp->getBody().c_str(), rp->getBody().length());
                         outputFile.close();
-                        toSend = rp->getVersion() + " 201 Created\r\nLocation: ";
+                        toSend = rp->getVersion() + " 303 See Other\r\nLocation: \r\n";
                         toSend += fullpath;
                         toSend += "\r\nContent-Length: 0\r\n\r\n";
                         closedir(dir);

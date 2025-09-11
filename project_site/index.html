@@ -22,96 +22,150 @@
         <section class="mb-8">
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">Static File & Redirect Tests</h2>
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <a href="/css/style.css" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-colors duration-200 text-center">
-                    Test CSS File
-                </a>
-                <a href="/images/" class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-colors duration-200 text-center">
-                    Test Autoindex
-                </a>
-                <a href="/old-page/" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-colors duration-200 text-center">
-                    Test 301 Redirect
-                </a>
+                <a href="/css/style.css" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 text-center">View CSS File</a>
+                <a href="/old-page" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 text-center">Test 301 Redirect</a>
+                <a href="/uploads/" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 text-center">Test Autoindex</a>
             </div>
         </section>
 
-        <!-- File Upload & Delete Tests -->
+        <!-- File Upload Test -->
         <section class="mb-8">
-            <h2 class="text-2xl font-semibold text-gray-700 mb-4">File Upload & Delete Tests</h2>
-            <div class="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-4">
-                <p class="text-sm text-gray-500 mb-2">Upload a file to the `/uploads` directory. Try uploading a file larger than 1MB to test the `client_max_body_size` limit.</p>
-                <form action="/uploads" method="POST" enctype="multipart/form-data" class="flex flex-col sm:flex-row gap-4 items-center">
-                    <input type="file" name="fileToUpload" id="fileToUpload" required class="flex-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none">
-                    <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-colors duration-200 w-full sm:w-auto">
-                        Upload File
-                    </button>
-                </form>
-            </div>
-            <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                <p class="text-sm text-gray-500 mb-2">Enter the filename to delete from the `/uploads` directory. This tests the DELETE method.</p>
-                <form id="deleteForm" class="flex flex-col sm:flex-row gap-4 items-center">
-                    <input type="text" id="filenameToDelete" placeholder="e.g., my_file.txt" required class="flex-1 block w-full p-2 text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button type="submit" class="bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-colors duration-200 w-full sm:w-auto">
-                        Delete File
-                    </button>
-                </form>
-            </div>
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">File Upload Test</h2>
+            <p class="text-gray-600 mb-4">Test your file upload feature. Files will be uploaded to the `uploads` directory. The browser should redirect to the home page upon success.</p>
+            <form action="/uploads" method="POST" enctype="multipart/form-data" id="uploadForm" class="flex flex-col gap-4">
+                <input type="file" name="fileToUpload" id="fileToUpload" required class="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-full file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-blue-50 file:text-blue-700
+                    hover:file:bg-blue-100">
+                <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">Upload File</button>
+            </form>
+            <div id="uploadMessage" class="mt-4 p-4 rounded-lg text-center font-bold" style="display: none;"></div>
+        </section>
+        
+        <!-- File Deletion Test -->
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">File Deletion Test</h2>
+            <p class="text-gray-600 mb-4">Enter the exact name of a file from your `uploads` directory to delete it. The browser should report a `204 No Content` status on success.</p>
+            <form id="deleteForm" class="flex flex-col md:flex-row gap-4">
+                <input type="text" id="filenameToDelete" placeholder="e.g., my_file.txt" required class="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button type="submit" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">Delete File</button>
+            </form>
+            <div id="deleteMessage" class="mt-4 p-4 rounded-lg text-center font-bold" style="display: none;"></div>
         </section>
 
         <!-- CGI Tests -->
-        <section>
+        <section class="mb-8">
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">CGI Tests</h2>
-            <div class="grid md:grid-cols-2 gap-4">
+            <p class="text-gray-600 mb-4">Test your CGI execution with `GET` and `POST` methods. The server should execute the Python script and return its output as a response.</p>
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- GET Test Form -->
                 <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                    <h3 class="text-xl font-semibold text-gray-700 mb-2">GET Test</h3>
-                    <p class="text-sm text-gray-500 mb-4">The CGI script will display your name from the URL.</p>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-3">GET Request</h3>
+                    <p class="text-gray-600 mb-4">Enter a query to be sent to the CGI script.</p>
                     <form action="/cgi-bin/info.py" method="GET" class="flex flex-col gap-4">
-                        <input type="text" name="name" placeholder="Enter your name" required class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <button type="submit" class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-colors duration-200">
-                            Run GET Test
-                        </button>
+                        <input type="text" name="query" placeholder="Enter your query" required class="px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">Run GET Test</button>
                     </form>
                 </div>
+                <!-- POST Test Form -->
                 <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                    <h3 class="text-xl font-semibold text-gray-700 mb-2">POST Test</h3>
-                    <p class="text-sm text-gray-500 mb-4">The CGI script will display your message from the request body.</p>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-3">POST Request</h3>
+                    <p class="text-gray-600 mb-4">Enter a message to be sent in the request body.</p>
                     <form action="/cgi-bin/info.py" method="POST" class="flex flex-col gap-4">
-                        <textarea name="message" rows="3" placeholder="Enter your message" required class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                        <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-colors duration-200">
-                            Run POST Test
-                        </button>
+                        <textarea name="message" rows="4" placeholder="Enter your message here..." required class="px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">Run POST Test</button>
                     </form>
                 </div>
             </div>
         </section>
 
+        <footer class="text-center text-gray-500 text-sm mt-10 border-t pt-6">
+            <p>&copy; 2024 Webserv Project. All rights reserved.</p>
+        </footer>
+
     </div>
+
     <script>
+        // File upload handling with Fetch API
+        document.getElementById('uploadForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const form = event.target;
+            const uploadMessage = document.getElementById('uploadMessage');
+            
+            // Display a loading message
+            uploadMessage.textContent = 'Uploading file...';
+            uploadMessage.style.display = 'block';
+            uploadMessage.classList.remove('bg-red-200', 'text-red-700', 'bg-green-200', 'text-green-700');
+            uploadMessage.classList.add('bg-gray-200', 'text-gray-700');
+
+            fetch(form.action, {
+                method: form.method,
+                body: new FormData(form),
+                redirect: 'follow'
+            })
+            .then(response => {
+                // Check if the upload was successful based on status or redirect
+                if (response.ok || response.status === 303) {
+                    uploadMessage.textContent = 'File uploaded successfully!';
+                    uploadMessage.classList.remove('bg-gray-200', 'text-gray-700', 'bg-red-200', 'text-red-700');
+                    uploadMessage.classList.add('bg-green-200', 'text-green-700');
+                } else {
+                    uploadMessage.textContent = `Upload failed. Status: ${response.status} ${response.statusText || ''}`;
+                    uploadMessage.classList.remove('bg-gray-200', 'text-gray-700', 'bg-green-200', 'text-green-700');
+                    uploadMessage.classList.add('bg-red-200', 'text-red-700');
+                }
+            })
+            .catch(error => {
+                console.error('Network or fetch error:', error);
+                uploadMessage.textContent = 'An error occurred during the upload request.';
+                uploadMessage.classList.remove('bg-gray-200', 'text-gray-700', 'bg-green-200', 'text-green-700');
+                uploadMessage.classList.add('bg-red-200', 'text-red-700');
+            });
+        });
+
+        // File deletion handling with Fetch API
         document.getElementById('deleteForm').addEventListener('submit', function(event) {
             event.preventDefault();
             const filename = document.getElementById('filenameToDelete').value;
+            const deleteMessage = document.getElementById('deleteMessage');
+            deleteMessage.style.display = 'block';
+
             if (filename) {
-                // Construct the full URL for the DELETE request
                 const fileUrl = `/uploads/${filename}`;
                 fetch(fileUrl, {
                     method: 'DELETE'
                 })
                 .then(response => {
                     if (response.status === 204) {
-                        alert('File deleted successfully! Status: 204 No Content');
+                        deleteMessage.textContent = 'File deleted successfully!';
+                        deleteMessage.classList.remove('bg-red-200', 'text-red-700');
+                        deleteMessage.classList.add('bg-green-200', 'text-green-700');
                     } else if (response.status === 404) {
-                        alert('Error: File not found! Status: 404 Not Found');
+                        deleteMessage.textContent = 'Error: File not found!';
+                        deleteMessage.classList.remove('bg-green-200', 'text-green-700');
+                        deleteMessage.classList.add('bg-red-200', 'text-red-700');
                     } else if (response.status === 403) {
-                        alert('Error: Permission denied! Status: 403 Forbidden');
+                        deleteMessage.textContent = 'Error: Permission denied!';
+                        deleteMessage.classList.remove('bg-green-200', 'text-green-700');
+                        deleteMessage.classList.add('bg-red-200', 'text-red-700');
                     } else {
-                        alert(`Deletion failed. Status: ${response.status}`);
+                        deleteMessage.textContent = `Deletion failed. Status: ${response.status}`;
+                        deleteMessage.classList.remove('bg-green-200', 'text-green-700');
+                        deleteMessage.classList.add('bg-red-200', 'text-red-700');
                     }
                 })
                 .catch(error => {
                     console.error('Network or fetch error:', error);
-                    alert('An error occurred during the deletion request.');
+                    deleteMessage.textContent = 'An error occurred during the deletion request.';
+                    deleteMessage.classList.remove('bg-green-200', 'text-green-700');
+                    deleteMessage.classList.add('bg-red-200', 'text-red-700');
                 });
             } else {
-                alert('Please enter a filename to delete.');
+                deleteMessage.textContent = 'Please enter a filename to delete.';
+                deleteMessage.classList.remove('bg-green-200', 'text-green-700');
+                deleteMessage.classList.add('bg-red-200', 'text-red-700');
             }
         });
     </script>
