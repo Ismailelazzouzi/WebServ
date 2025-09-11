@@ -628,7 +628,7 @@ int    ResponseBuilder::runCgi(RequestParser *rp, ServerConfig &config, ClientIn
         }
     }
     if (pid > 0)
-{
+    {
     close(writefds[0]);
     close(readfds[1]);
     if (rp->getBody().length() > 0)
